@@ -8,6 +8,7 @@ name = "Gami_tree_reproduce"
 version = "0.1.0"
 authors = [
   { name = "Maocheng", email = "sean.8922xomace@gmail.com" },
+  {name = "Sven Maurice Morlock", email = "svenmauricemorlock@yahoo.com"}
 ]
 description = "Gami_tree study with reproduction"
 readme = "README.md"
