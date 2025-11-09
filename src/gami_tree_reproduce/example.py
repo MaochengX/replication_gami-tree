@@ -2,8 +2,7 @@
 
 
 class Example:
-    
-    """This class exists to show off autodocstring generation.""" 
+    """This class exists to show off autodocstring generation."""
 
     def add(self, a: int, b: int) -> int:
         """Add two integers.
