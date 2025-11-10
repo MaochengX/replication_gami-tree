@@ -22,6 +22,6 @@ jobs:
 
       - name: Run Ruff formatter check
         run: uvx ruff format --check .
-      
+
       - name: Check package quality
         run: uvx pyroma .

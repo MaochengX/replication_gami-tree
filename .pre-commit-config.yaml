@@ -3,11 +3,20 @@ ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit hooks
   autoupdate_schedule: weekly
+  skip: []  # Optional: skip certain hooks in CI
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
       - id: ruff
-        args: [--fix]
-      - id: ruff-format
+        args: [--fix]      # linter: automatically fix issues if possible
+      - id: ruff-format    # formatter: check code format no args (means no auto format)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
