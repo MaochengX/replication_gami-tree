@@ -1,18 +1,13 @@
+# .pre-commit-config.yaml
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autoupdate_schedule: weekly
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.2
+    rev: v0.8.4
     hooks:
-      # Run the linter
       - id: ruff
-        args: [ --fix ]
-      # Run the formatter
-      - id: ruff check .
-      - id: ruff format --check .
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        additional_dependencies: []
-        # If you need specific packages for type checking, add them:
-        # additional_dependencies: [types-requests, pandas-stubs]
+        args: [--fix]
+      - id: ruff-format
