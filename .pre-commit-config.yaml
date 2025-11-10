@@ -3,20 +3,33 @@ ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit hooks
   autoupdate_schedule: weekly
-  skip: []  # Optional: skip certain hooks in CI
+  skip: []                     # no hooks are skipped in CI
 
 repos:
+  # -------------------------------------------------
+  # Ruff (lint + format) – runs *first* so it can fix
+  # -------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
+      # 1. Linter – auto-fix everything it can (including ERA001)
       - id: ruff
-        args: [--fix]      # linter: automatically fix issues if possible
-      - id: ruff-format    # formatter: check code format no args (means no auto format)
+        args: [--fix, --exit-non-zero-on-fix]
 
+      # 2. Formatter – **auto-format** (Black-compatible)
+      - id: ruff-format
+        # No extra args → it will *write* the formatted files
+
+  # -------------------------------------------------
+  # Classic pre-commit hooks – run *after* Ruff
+  # -------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
+      # Shows the exact location when there is still trailing whitespace
       - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]   # optional: adjust for markdown
+
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
