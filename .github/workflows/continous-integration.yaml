@@ -1,3 +1,12 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]  # Adjust to your branch names
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:  # Allows manual triggering
+
 jobs:
   quality:
     runs-on: ubuntu-latest
