@@ -5,12 +5,8 @@ on:
   pull_request:
 
 jobs:
-  ruff:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12']
+  quality:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,10 +15,13 @@ jobs:
         uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
-        run: uv python install ${{ matrix.python-version }}
+        run: uv python install 3.11
 
       - name: Run Ruff linter
         run: uvx ruff check .
 
       - name: Run Ruff formatter check
         run: uvx ruff format --check .
+
+      - name: Check package quality
+        run: uvx pyroma .

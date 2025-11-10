@@ -18,7 +18,6 @@ requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 1 - Planning",
   "Intended Audience :: Science/Research",
-  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
@@ -28,8 +27,15 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
-  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Typing :: Typed",
+]
+keywords = [
+    "machine-learning",
+    "replication-study",
+    "data-science",
+    "reproducibility",
+    "gami-tree"
 ]
 dependencies = []
 
@@ -40,13 +46,16 @@ Discussions = "https://github.com/MaochengX/Gami_tree_reproduce/discussions"
 Changelog = "https://github.com/MaochengX/Gami_tree_reproduce/releases"
 
 
-[dependency-groups]
+[dependency-groups] # cf. PEP 735
 test = [
   "pytest >=6",
   "pytest-cov >=3",
 ]
 dev = [
   { include-group = "test" },
+  "ruff>=0.1.0",
+  "pre-commit>=3.0.0",
+  "pyroma>=4.0.0",
 ]
 docs = [
   "sphinx>=7.0",
@@ -145,17 +154,6 @@ ignore = [
 "tests/**" = ["T20"]
 "noxfile.py" = ["T20"]
 
-
-[tool.pylint]
-py-version = "3.10"
-ignore-paths = [".*/_version.py"]
-reports.output-format = "colorized"
-similarities.ignore-imports = "yes"
-messages_control.disable = [
-  "design",
-  "fixme",
-  "line-too-long",
-  "missing-module-docstring",
-  "missing-function-docstring",
-  "wrong-import-position",
-]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
