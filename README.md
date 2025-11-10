@@ -8,3 +8,10 @@ In this repo we conduct a replication study using so-called Gami-Trees, an by co
 ## Features:
  - Environment and dependency management using [`uvx`](https://docs.astral.sh/uv/guides/tools/)
  - Code Style: Black using [`ruff`](https://docs.astral.sh/ruff/)
+
+
+# :rocket: Getting started
+All our experiments are run from a central makefile.
+
+### :fire: Important conventions
+ - the name of the dataset in `conf/data.yaml` must match the name in `Makefile`
