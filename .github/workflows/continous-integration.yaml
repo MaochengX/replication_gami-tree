@@ -8,9 +8,20 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Run Ruff linter
+        run: uvx ruff check .
+
+      - name: Run Ruff formatter check
+        run: uvx ruff format --check .
+      
       - name: Check package quality
         run: uvx pyroma .
-
-  # test:
-    # ... matrix for actual tests on multiple OS/Python versions
