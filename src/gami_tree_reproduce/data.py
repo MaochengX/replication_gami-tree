@@ -35,6 +35,3 @@ def get_openml_data(name: str, destination: Path = dir_raw) -> Path:
         data.to_parquet(filename, index=False)
 
     return filename
-
-
-get_openml_data("bike")
