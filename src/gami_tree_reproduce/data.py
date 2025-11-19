@@ -1,37 +1,25 @@
 from pathlib import Path
 
-from omegaconf import OmegaConf
+import yaml
 from sklearn.datasets import fetch_openml
 
-root = Path(__file__).resolve().parents[2]
-dir_raw = root / "data" / "raw"
-dir_raw.mkdir(parents=True, exist_ok=True)
-path_configuration = root / "conf" / "data.yaml"
+root = Path.cwd()
+path_config = root / "conf" / "data.yaml"
+with Path.open(path_config) as f:
+    cfg = yaml.safe_load(f)
+path_data = cfg["path_data"]
 
 
-def get_openml_data(name: str, destination: Path = dir_raw) -> Path:
-    """Download the bike sharing data from UCI using openML.
+def download_data_openml(id: int) -> Path:
+    destination = root / path_data
+    if not Path.is_dir(destination):
+        msg = f"{destination} is not an existing directory."
+        raise NotADirectoryError(msg)
 
-    TODO:
-        - check whether download necessary or already existing
-        - Improve docstring: example code, error handling
-        - is more generic than openml necessary/needed?
+    data = fetch_openml(data_id=id, as_frame=True, parser="auto")
+    frame = data.frame
 
-    Args:
-        name (str): Name of the dataset as used as group in configuration file (eg. bike and not openML name)
-        destination(Path, optional):
-
-    Returns:
-        Path: Path to the file itself.
-    """
-    config = OmegaConf.load(path_configuration)
-    config = config.get(name)
-    filename = destination / name
-
-    if not Path.is_file(filename):
-        openml_name = config.get("openml-name")
-        data = fetch_openml(name=openml_name, as_frame=True)
-        data = data.frame
-        data.to_parquet(filename, index=False)
-
-    return filename
+    data_name = data.details["name"]
+    full_path = destination / Path(f"{data_name}.csv")
+    frame.to_csv(full_path)
+    return full_path

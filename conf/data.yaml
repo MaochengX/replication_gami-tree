@@ -1,2 +1,1 @@
-bike:
- openml-name: New-York-City-Bike-Share-Dataset
+path_data: data # path from project root
