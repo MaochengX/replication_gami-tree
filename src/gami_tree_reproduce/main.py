@@ -5,8 +5,9 @@ from omegaconf import DictConfig
 
 root = Path.cwd()
 
-@hydra.main(config_name="main.yaml", config_path=str(root/ "conf"), version_base=None)
-def train_all(cfg:DictConfig ) -> None:
+
+@hydra.main(config_name="main.yaml", config_path=str(root / "conf"), version_base=None)
+def train_all(cfg: DictConfig) -> None:
     """Train all models.
 
     For each model and each dataset train the model on the dataset and document
@@ -16,8 +17,7 @@ def train_all(cfg:DictConfig ) -> None:
     Args:
         cfg (dict): confinguration file for main script
     """
-    cfg_model = cfg["cfg_models"]
-    cfg_data = cfg["cfg_data"]
+    # TODO: run hyra multi run
 
 
 if __name__ == "__main__":
