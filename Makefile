@@ -1,25 +1,20 @@
 .PHONY: clean-all
+.PHONY: data-openml
 
-DATASETS := bike dummy_to_be_added
-DEST ?= data/raw
-
-$(DATASETS):
-	@echo "📥 Fetching dataset '$@' into $(DEST)..."
-	python -c "from pathlib import Path; from src.gami_tree_reproduce.data import get_openml_data; get_openml_data('$@', Path('$(DEST)'))"
+get_data:
+	@python3 src/gami_tree_reproduce/data.py
+	@ech "check data folder"
 
 
-clean:
-	@echo "🧹 clean data folder (except raw)"
-	find data -mindepth 1 -maxdepth 1 ! -name 'raw' -exec rm -rf {} +
+clear_data:
+	@rm data -rf
+	@mkdir data
+	@echo "🧹 remove data/"
 
-clean-all:
-	@echo "🧹 clean data folder..."
-	rm -rf data
-	mkdir data
-	mkdir data/raw
-	mkdir data/processed
 
+clear_runs:
+	@rm assets/simulation_runs -rf
+	@echo "🧹 remove asets/simulation_runs/"
 
 # Alias:
 clear: clean
-clear-all: clean-all
