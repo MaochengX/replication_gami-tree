@@ -1,4 +1,4 @@
-data_folder: data
+path_data: data
 hydra:
   run:
     dir: assets/simulation_runs/${now:%Y-%m-%d_%H-%M-%S}
