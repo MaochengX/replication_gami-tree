@@ -23,14 +23,16 @@ def download_data_openml(id: int, file_name: str) -> Path:
     frame.to_csv(full_path)
     return full_path
 
-def get_data_from_conf(conf_data_folder:Path = root / "conf" / "datasets") -> None:
+
+def get_data_from_conf(conf_data_folder: Path = root / "conf" / "datasets") -> None:
     for config_file in conf_data_folder.rglob("*.yaml"):
         with Path.open(config_file) as f:
-            cfg  =yaml.safe_load(f)
+            cfg = yaml.safe_load(f)
         if "openml_id" in cfg:
             id = cfg["openml_id"]
             file_name = cfg["name"]
             download_data_openml(id, file_name)
+
 
 path_data.mkdir()
 get_data_from_conf()
