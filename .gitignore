@@ -97,3 +97,6 @@ config.local.*
 *.bak
 *.swp
 .cache/
+
+# attic
+attic/
