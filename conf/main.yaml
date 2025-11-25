@@ -1,0 +1,8 @@
+defaults:
+  - datasets: all
+  - models: all
+  - _self_
+
+hydra:
+  run:
+    dir: assets/simulation_runs/${now:%Y-%m-%d_%H-%M-%S}
