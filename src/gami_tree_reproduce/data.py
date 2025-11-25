@@ -147,9 +147,7 @@ def make_data_from_conf(conf_data_folder: Path = root / "conf" / "datasets") -> 
             id = cfg["openml_id"]
             file_name = cfg["name"]
             download_data_openml(id, file_name)
+        elif config_file.name == "experiment.yaml":
+            make_experiment(cfg)
 
-
-with Path.open(root / "conf" / "datasets" / "experiment.yaml") as f:
-    conf_experiment = yaml.safe_load(f)
-
-make_experiment(conf_experiment)
+make_data_from_conf()

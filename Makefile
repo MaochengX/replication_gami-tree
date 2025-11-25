@@ -1,10 +1,14 @@
-.PHONY: clean-all
-.PHONY: data-openml
+.PHONY: clear_data
+.PHONY: clear_runs
+.PHONY: get_data
 
 get_data:
-	@python3 src/gami_tree_reproduce/data.py
-	@ech "check data folder"
+	@uv run src/gami_tree_reproduce/data.py
+	@echo "check data folder"
 
+run_simulation:
+	@uv run src/gami_tree_reproduce/main.py 
+	@echo "check assets folder for experiment results"
 
 clear_data:
 	@rm data -rf
