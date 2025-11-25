@@ -7,7 +7,7 @@ get_data:
 	@echo "check data folder"
 
 run_simulation:
-	@uv run src/gami_tree_reproduce/main.py 
+	@uv run src/gami_tree_reproduce/main.py
 	@echo "check assets folder for experiment results"
 
 clear_data:
