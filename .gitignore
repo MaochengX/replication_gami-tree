@@ -100,3 +100,9 @@ config.local.*
 
 # attic
 attic/
+
+# assets
+assets/
+
+# outputs
+outputs/
