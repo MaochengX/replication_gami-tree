@@ -1,3 +1,4 @@
-openml_id: 44017
 name: bike_sharing
+openml_id: 44017
 task: regression
+path: data/${name}
