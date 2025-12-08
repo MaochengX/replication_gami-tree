@@ -1,14 +1,5 @@
-from abc import abstractmethod
-from collections.abc import Iterable
-from dataclasses import asdict
-from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Protocol,
-    override,
-    runtime_checkable,
-)
+from abc import ABC, abstractmethod
+from typing import Any, Literal
 
 import numpy as np
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
@@ -16,111 +7,76 @@ from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
 from xgboost import XGBRegressor as XGBR
 
-from src.gami_tree_reproduce.params import EBMParams, GAMITParams, Params, XGBParams
+from gami_tree_reproduce.params import EBMParams, Params, XGBParams
+
+Task = Literal["classification", "regression"]
 
 
-# TODO: Forward declarations for now until implemented
-class GAMITR: ...
-
-
-class GAMITC: ...
-
-
-# Protocol Definitions
-
-
-@runtime_checkable
-class Classifier(Protocol):
-    def train(self, X, y) -> None: ...
-    def predict_proba(self, X) -> np.ndarray | Iterable[float]: ...
-
-
-@runtime_checkable
-class Regressor(Protocol):
-    def train(self, X, y) -> None: ...
-    def predict(self, X) -> np.ndarray | Iterable[float]: ...
-
-
-Model = Classifier | Regressor
-
-
-####################
-# Registry Metaclass
-####################
-class InducerRegistryBase(type):
+class BaseInducer(ABC):
     """
-    Metaclass automatically registering Inducer subclasses.
-    """
-
-    inducer_registry: ClassVar[dict[str, type["BaseInducerClass"]]] = {}
-
-    @override
-    def __new__(cls, name, bases, attrs):
-        new_cls = super().__new__(cls, name, bases, attrs)
-        if name != "BaseInducerClass":
-            cls.inducer_registry[name] = new_cls
-        return new_cls
-
-    @classmethod
-    def get_registry(cls) -> dict[str, type["BaseInducerClass"]]:
-        return dict(cls.inducer_registry)
-
-
-##############
-# Base Inducer
-##############
-class BaseInducerClass(metaclass=InducerRegistryBase):
-    """
-    Base class for model inducers.
+    Class template for inducer classes.
+    This serves as a wrapper for the various imported inducer algorithms.
     """
 
     @property
     @abstractmethod
-    def classifier_class(self) -> type[Classifier]: ...
+    def classifier_class(self): ...
 
     @property
     @abstractmethod
-    def regressor_class(self) -> type[Regressor]: ...
+    def regressor_class(self): ...
 
-    def instantiate(
-        self,
-        task: Literal["classification", "regression"],
-        params: Params | dict | None = None,
-    ) -> Model:
+    @property
+    @abstractmethod
+    def param_class(self) -> type[Params]: ...
+
+    def __init__(self, params_wrapper: Params, task: Task):
+        """
+        Create an Inducer object, based on parameters and task.
+        Depending on task, a classsification or regression object from the implementing library is chosen.
+
+        Args:
+            params (Params): The parameters should be wrapped in a Params object, which validates the parameters.
+            task (Task): The actual task, either "regression" or "classification".
+        """
+        if not isinstance(params_wrapper, self.param_class):
+            msg = f"{self.__class__.__name__} expects params of type {self.param_class.__name__}, but got {type(params_wrapper).__name__}."
+            raise TypeError(msg)
+
+        if not isinstance(task, Task):
+            msg = f"Expected task to be type 'Task' but got {type(task)}"
+            raise TypeError(msg)
+
+        self._params = params_wrapper.get_params()
+        self._task = task
+
         model_class = (
             self.classifier_class if task == "classification" else self.regressor_class
         )
 
-        # Convert dataclass parameters to dict
-        if params is None:
-            params_dict = {}
-        elif hasattr(params, "__dataclass_fields__"):
-            params_dict = asdict(params)
-        else:
-            params_dict = dict(params)
+        self._model = model_class(**self._params)
 
-        self._params = params_dict
+    def get_params(self) -> dict:
+        return self._params
 
-        # Return a NEW INSTANCE EVERY TIME
-        return model_class(**params_dict)
+    def get_task(self) -> str:
+        return self._task
 
-    def train(self, X: Any, y: Any, params: Params | dict) -> np.ndarray:
-        """ " """
-        if self._trained:
-            msg = "Cannot retrain an already trained model."
-            raise AssertionError(msg)
+    @abstractmethod
+    def train(self, X: Any, y: Any) -> np.ndarray: ...
 
-        self._trained = True
-        self._params = params
+    """
+    #TODO: implement logging with mlflow
+    """
 
-        self._model.train(X, y)
+    @abstractmethod
+    def predict(self, X: Any) -> np.ndarray: ...
 
 
-###################
-# Concrete Inducers
-###################
-class EBMinducer(BaseInducerClass):
-    param_class = EBMParams
+class EBMinducer(BaseInducer):
+    """
+    Docstring for EBMinducer
+    """
 
     @property
     def classifier_class(self) -> type[EBMC]:
@@ -130,9 +86,21 @@ class EBMinducer(BaseInducerClass):
     def regressor_class(self) -> type[EBMR]:
         return EBMR
 
+    @property
+    def param_class(self):
+        return EBMParams
 
-class XGBinducer(BaseInducerClass):
-    param_class = XGBParams
+    def train(self, X, y) -> None:
+        self._model.fit(X, y)
+
+    def predict(self, X):
+        pass
+
+
+class XGBinducer(BaseInducer):
+    """
+    Docstring for XGBinducer
+    """
 
     @property
     def classifier_class(self) -> type[XGBC]:
@@ -142,22 +110,12 @@ class XGBinducer(BaseInducerClass):
     def regressor_class(self) -> type[XGBR]:
         return XGBR
 
-
-class GAMITinducer(BaseInducerClass):
-    param_class = GAMITParams
-
     @property
-    def classifier_class(self) -> type[GAMITC]:
-        return GAMITC
+    def param_class(self):
+        return XGBParams
 
-    @property
-    def regressor_class(self) -> type[GAMITR]:
-        return GAMITR
+    def train(self, X, y) -> None:
+        self._model.fit(X, y)
 
-
-# Registry Access
-
-inducer_registry = InducerRegistryBase.get_registry()
-ebm_base = EBMinducer()
-xgb_base = XGBinducer()
-gamit_base = GAMITinducer()
+    def predict(self, X) -> np.ndarray:
+        return self._model.predict(X)
