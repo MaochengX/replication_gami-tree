@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 import numpy as np
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
@@ -30,7 +30,11 @@ class BaseInducer(ABC):
     @abstractmethod
     def param_class(self) -> type[Params]: ...
 
-    def __init__(self, params_wrapper: Params, task: Task):
+    @property
+    def model(self):
+        return self._model
+
+    def __init__(self, task: Task, params_wrapper: Params):
         """
         Create an Inducer object, based on parameters and task.
         Depending on task, a classsification or regression object from the implementing library is chosen.
@@ -43,7 +47,7 @@ class BaseInducer(ABC):
             msg = f"{self.__class__.__name__} expects params of type {self.param_class.__name__}, but got {type(params_wrapper).__name__}."
             raise TypeError(msg)
 
-        if not isinstance(task, Task):
+        if task not in get_args(Task):
             msg = f"Expected task to be type 'Task' but got {type(task)}"
             raise TypeError(msg)
 
@@ -119,3 +123,14 @@ class XGBinducer(BaseInducer):
 
     def predict(self, X) -> np.ndarray:
         return self._model.predict(X)
+
+
+INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": EBMinducer}
+
+
+def get_inducer(name: str) -> callable:
+    key = name.lower()
+    if key not in INDUCER_REGISTRY:
+        raise ValueError
+
+    return INDUCER_REGISTRY[key]

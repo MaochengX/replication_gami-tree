@@ -34,10 +34,13 @@ class BaseParams(ABC):
             raise TypeError(msg)
 
         self._validate_params(task, params)
-        self._parms = params
+        self._params = params
 
     @abstractmethod
     def _validate_params(self, task: Task, params: dict) -> bool: ...
+
+    def get_params(self) -> dict:
+        return self._params
 
 
 Params = TypeVar("Params", bound=BaseParams)
@@ -102,3 +105,14 @@ class GAMITParams(BaseParams):
 
     def __init__(self, task: Task, params: dict):
         pass
+
+
+PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams}
+
+
+def get_parameter(name: str) -> callable:
+    key = name.lower()
+    if key not in PARAMS_REGISTRY:
+        raise ValueError
+
+    return PARAMS_REGISTRY[key]

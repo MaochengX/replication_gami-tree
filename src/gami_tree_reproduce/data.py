@@ -10,7 +10,6 @@ from sklearn.model_selection import ParameterGrid
 
 root = Path.cwd()
 path_data = root / "data"
-SEED = 123
 
 
 def download_data_openml(id: int, file_name: str) -> Path:
@@ -145,7 +144,7 @@ def make_data_from_conf(conf_data_folder: Path = root / "conf" / "datasets") -> 
             cfg = yaml.safe_load(f)
         if "openml_id" in cfg:
             id = cfg["openml_id"]
-            file_name = cfg["name"]
+            file_name = config_file.stem
             download_data_openml(id, file_name)
         elif config_file.name == "experiment.yaml":
             make_experiment(cfg)
