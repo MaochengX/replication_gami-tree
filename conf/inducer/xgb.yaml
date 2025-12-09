@@ -1,0 +1,2 @@
+max_depth: [8, 32]
+max_leaves: [16, 64]
