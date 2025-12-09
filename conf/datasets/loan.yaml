@@ -1,4 +1,0 @@
-name: home_lending
-openml_id: 46561
-task: classification
-path: data/${name}
