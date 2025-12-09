@@ -1,0 +1,3 @@
+name: loan.csv
+openml_id: 46561
+target: sequence_number
