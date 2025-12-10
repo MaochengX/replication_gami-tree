@@ -38,6 +38,7 @@ keywords = [
     "gami-tree"
 ]
 dependencies = [
+    "gaminet>=0.6.1",
     "interpret>=0.7.3",
     "numpy>=2.2.6",
     "xgboost>=3.1.2",
