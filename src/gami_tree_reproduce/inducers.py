@@ -2,12 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Any, Literal, get_args
 
 import numpy as np
+from gaminet import GAMINet
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
 from xgboost import XGBRegressor as XGBR
 
-from gami_tree_reproduce.params import EBMParams, Params, XGBParams
+from gami_tree_reproduce.params import EBMParams, GamiNetParams, Params, XGBParams
 
 Task = Literal["classification", "regression"]
 
@@ -125,7 +126,35 @@ class XGBinducer(BaseInducer):
         return self._model.predict(X)
 
 
-INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": EBMinducer}
+class GamiNetInducer(BaseInducer):
+    """ "
+    Docstring
+    """
+
+    @property
+    def classifier_class(self) -> type[GAMINet]:
+        return GAMINet
+
+    @property
+    def regressor_class(self) -> type[GAMINet]:
+        return GAMINet
+
+    @property
+    def param_class(self):
+        return GamiNetParams
+
+    def train(self, X, y) -> None:
+        self._model.fit(X, y)
+
+    def predict(self, X) -> np.ndarray:
+        return self._model.predict(X)
+
+
+######################################################################################
+# for usage only access should be done via imported getter function and class registry
+######################################################################################
+
+INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer, "gaminet": GamiNetInducer}
 
 
 def get_inducer(name: str) -> callable:
