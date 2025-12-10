@@ -1,2 +1,7 @@
-max_interaction_bins: [8, 16, 32]
-learning_rate: [0.05, 0.01]
+parameters:
+  fix:
+    interact_pairs: 45
+
+  tune:
+    - max_bins
+    - max_interact

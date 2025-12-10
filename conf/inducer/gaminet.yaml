@@ -1,0 +1,4 @@
+parameters:
+  fix:
+    batch_size: 100
+    interact_num: 45
