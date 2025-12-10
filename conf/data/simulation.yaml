@@ -1,0 +1,20 @@
+SEED: 123
+x1_covariates: 20
+x2_covariates: 10
+var: 1
+cor: 0
+size: 5000
+
+x1_generator:
+  name: multivariate_normal
+  params:
+    mean: "${np:full, ${x1_covariates}, 0}"
+    cov: "${equicov: ${x1_covariates}, ${cor}, ${var}}"
+    size: "${size}"
+
+x2_generator:
+  name: multivariate_normal
+  params:
+    mean: "${np:full, ${x2_covariates}, 0}"
+    cov: "${equicov: ${x2_covariates}, ${cor}, ${var}}"
+    size: "${size}"
