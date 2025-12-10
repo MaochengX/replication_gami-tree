@@ -142,12 +142,12 @@ def model4(X) -> np.ndarray:
 def write_data(covariates, modelfunc, prefix=filenameprefix, folderpath=DATA) -> None:
     # TODO: add noise to y
     y = modelfunc(covariates)
-    filename_data = prefix + "_" + modelfunc.__name__ + ".csv"
+    filename_data = prefix + "_" + modelfunc.__name__ + ".pq"
 
     cols = [f"X_{i + 1}" for i in range(covariates.shape[1])]
     data = pd.DataFrame(covariates, columns=cols)
     data["y"] = y
-    data.to_csv(Path(folderpath, filename_data), index=False)
+    data.to_parquet(Path(folderpath, filename_data), index=False)
 
 
 def write_configuration(config, filename, folderpath=ASSET):

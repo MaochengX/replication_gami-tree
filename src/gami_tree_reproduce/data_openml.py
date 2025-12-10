@@ -12,8 +12,8 @@ def download_data_openml(id: int, filename: str, destination=DATA) -> Path:
     data = fetch_openml(data_id=id, as_frame=True, parser="auto")
     frame = data.frame
 
-    full_path = destination / filename
-    frame.to_csv(full_path, index=False)
+    full_path = destination / Path(filename).with_suffix(".pq")
+    frame.to_parquet(full_path, index=False)
 
 
 cfg = OmegaConf.load(CONF)
