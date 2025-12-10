@@ -1,7 +1,9 @@
+import inspect
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal, TypeVar, get_args
 
+from gaminet import GAMINet
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
@@ -107,6 +109,31 @@ class GAMITParams(BaseParams):
         pass
 
 
+class GamiNetParams(BaseParams):
+    def _validate_params(self, params: dict) -> None:
+        keys_to_check = list(params.keys())
+        signature = get_signature(GAMINet)
+        expected_parameter_keys = list(signature.keys())
+
+        conditions = [key in expected_parameter_keys for key in keys_to_check]
+        faulty_keys = [
+            key
+            for key, condition in zip(keys_to_check, conditions, strict=True)
+            if not condition
+        ]
+
+        if not all(conditions):
+            msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
+            raise ValueError(msg)
+
+    def __init__(self, task: Task, params: dict):
+        # API uses Catital case, see https://github.com/ZebinYang/gaminet
+        if task == "regression":
+            params["task_type"] = "Regression"
+        else:
+            params["task_type"] = "Classification"
+
+
 PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams}
 
 
@@ -116,3 +143,14 @@ def get_parameter(name: str) -> callable:
         raise ValueError
 
     return PARAMS_REGISTRY[key]
+
+
+def get_signature(cls):
+    sig = inspect.signature(cls)
+    args = {}
+    for name, param in sig.parameters.items():
+        if param.default is inspect._empty:
+            args[name] = None  # no default value
+        else:
+            args[name] = param.default
+    return args
