@@ -1,57 +1,65 @@
+import argparse
 from pathlib import Path
 
 import pandas as pd
-import yaml
-from sklearn.model_selection import ParameterGrid
+from omegaconf import DictConfig, OmegaConf
 
 from gami_tree_reproduce.inducers import get_inducer
 from gami_tree_reproduce.params import get_parameter
 
 ROOT = Path.cwd()
-PATH_CONF = ROOT / "conf"
-PATH_DATA = ROOT / "data"
+CONF = ROOT / "conf"
+DATA = ROOT / "data"
+ASSETS = ROOT / "assets"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--inducer", type=str, default="all")
+parser.add_argument("--data", type=str, default="all")
+parser.add_argument("--param_fix", type=str, default="")
+parser.add_argument("--param_tune", type=str, default="")
+args, unknown = parser.parse_known_args()
 
 
-def train_all(cfg: dict) -> None:
-    """Train all models.
-
-    For each model and each dataset train the model on the dataset and document
-    results in assets folder. Configurations for each model are expected to be in a
-    configuration file next to `main.yaml`.
-
-    Args:
-        cfg (dict): confinguration file for main script
+def parse_data(args):
     """
-    main_grid = ParameterGrid(cfg)
-
-    for _, main_conf in enumerate(main_grid):
-        name_dataset = main_conf["data"]
-        name_inducer = main_conf["inducer"]
-        name_task = main_conf["task"]
-
-        with Path.open(
-            PATH_CONF / "data" / Path(name_dataset).with_suffix(".yaml")
-        ) as f:
-            conf_data = yaml.safe_load(f)
-        target = conf_data["target"]
-
-        data = pd.read_csv(PATH_DATA / Path(name_dataset).with_suffix(".csv"))
-        y = data[target]
-        X = data.drop(columns=[target])
-
-        with Path.open(
-            PATH_CONF / "inducer" / Path(name_inducer).with_suffix(".yaml")
-        ) as f:
-            param_grid = yaml.safe_load(f)
-            param_grid = ParameterGrid(param_grid)
-
-        for _, param_conf in enumerate(param_grid):
-            params = get_parameter(name_inducer)(name_task, param_conf)
-            inducer = get_inducer(name_inducer)(name_task, params)
-            inducer.train(X, y)
+    The user can individually specify  datanames on which the models are trained.
+    Check whether valid dataset chosen (exists in data folder)
+    """
 
 
-if __name__ == "__main__":
-    with Path.open(PATH_CONF / "main.yaml") as f:
-        cfg = yaml.safe_load(f)
-    train_all(cfg)
+def parse_inducer(args):
+    """
+    The user can individually specify modelnames which is trained on the datasets.
+    Check whether valid inducer chosen (accessable from inducer_registry via 'get_inducer')
+    """
+
+
+def gather_parameternames(cfg: DictConfig):
+    if "parameters" not in cfg:
+        raise KeyError
+
+    params_fix = params_tune = []
+    if "fix" in cfg.parameters:
+        params_fix = list(cfg.parameters.fix.keys())
+    if "tune" in cfg.parameters:
+        params_tune = list(cfg.parameters.tune.keys())
+
+    return params_fix + params_tune
+
+
+task = "regression"
+inducer = "ebm"
+dataset = "sim4_model4"
+path_conf_inducer = CONF / "inducer" / Path(inducer).with_suffix(".yaml")
+cfg_inducer = OmegaConf.load(path_conf_inducer)
+
+
+param_class = get_parameter(inducer)
+param_config = param_class(task)
+inducer_configuration = get_inducer(inducer)(task, param_config)
+data = pd.read_parquet(DATA / Path(dataset).with_suffix(".pq"))
+if {"X_1", "y"}.issubset(set(data.columns)):
+    y = data.y
+    X = data.drop(columns=["y"])
+inducer_configuration.train(X, y)
+inducer_configuration.get_params()

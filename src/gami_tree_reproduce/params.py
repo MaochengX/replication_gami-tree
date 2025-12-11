@@ -1,3 +1,9 @@
+"""
+For each inducer wrap parameter dictionary in a wrapper class.
+At initialization check whether the configuration is valid (key match expected keys from API)
+and for some parameters set to default if no user input is provided.
+"""
+
 import inspect
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -24,22 +30,32 @@ Task = Literal["regression", "classification"]
 class BaseParams(ABC):
     """Base class for all parameter types."""
 
-    def __init__(self, task: Task, params: dict) -> None:
+    def __init__(self, task: Task, params: dict | None = None) -> None:
         """ """
+        if params is None:
+            params = {}
+
         expected_tasks = get_args(Task)
         if task not in expected_tasks:
             msg = f"Expected task to be in {expected_tasks} but got '{task}'."
             raise TypeError(msg)
+        self._task = task
 
         if not isinstance(params, dict):
             msg = f"Expected parameters to be a dictionary, got {type(params)}"
             raise TypeError(msg)
 
-        self._validate_params(task, params)
+        # validate the keys
+        self._validate_params(params)
+        # Set default and overwrite
+        params = self._fill_defaults(params)
         self._params = params
 
     @abstractmethod
-    def _validate_params(self, task: Task, params: dict) -> bool: ...
+    def _validate_params(self, params: dict) -> bool: ...
+
+    @abstractmethod
+    def _fill_defaults(self, params) -> dict: ...
 
     def get_params(self) -> dict:
         return self._params
@@ -49,14 +65,19 @@ Params = TypeVar("Params", bound=BaseParams)
 
 
 class EBMParams(BaseParams):
-    def _validate_params(self, task: Task, params: Params) -> None:
+    """
+    Docstring for EBMParams Class
+    """
+
+    def _validate_params(self, params: Params) -> None:
         """ """
         keys_to_check = list(params.keys())
+        task = self._task
 
         if task == "regression":
-            expected_parameter_keys = list(EBMC().get_params().keys())
-        elif task == "classification":
             expected_parameter_keys = list(EBMR().get_params().keys())
+        elif task == "classification":
+            expected_parameter_keys = list(EBMC().get_params().keys())
         else:
             msg = f"Got unexpected task {task}."
             raise ValueError(msg)
@@ -71,15 +92,24 @@ class EBMParams(BaseParams):
             msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
             raise ValueError(msg)
 
-    def __init__(self, task: Task, params: Params):
-        """Initialize Parameter diictionary for Explainable Boosting Machine."""
-        super().__init__(task, params)
+    def _fill_defaults(self, params) -> dict:
+        if self._task == "classification":
+            params_defaults = EBMC().get_params()
+        elif self._task == "regression":
+            params_defaults = EBMR().get_params()
+        params_defaults.update(params)
+        return params_defaults
 
 
 class XGBParams(BaseParams):
-    def _validate_params(self, task: Task, params: Params) -> None:
+    """
+    Docstring for XGBParams Class
+    """
+
+    def _validate_params(self, params: Params) -> None:
         """ """
         keys_to_check = list(params.keys())
+        task = self._task
 
         if task == "regression":
             expected_parameter_keys = list(XGBR().get_params().keys())
@@ -96,16 +126,17 @@ class XGBParams(BaseParams):
             msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
             raise ValueError(msg)
 
-    def __init__(self, task: Task, params: Params):
-        """Initialize Parameter dictionary for Expreme Gradient Boosting."""
-        super().__init__(task, params)
+    def _fill_defaults(self, params: dict):
+        if self._task == "regression":
+            params_default = XGBR().get_params()
+        elif self._task == "classification":
+            params_default = XGBC().get_params()
+        params_default.update(params)
+        return params_default
 
 
 class GAMITParams(BaseParams):
-    def _validate_params(self, task: Task, params: dict) -> None:
-        pass
-
-    def __init__(self, task: Task, params: dict):
+    def _validate_params(self, params: dict) -> None:
         pass
 
 
