@@ -131,7 +131,9 @@ class XGBinducer(BaseInducer):
         return XGBParams
 
     def train(self, X, y) -> None:
-        self._model.fit(X, y)
+        with mlflow.start_run(run_name="xgb"):
+            mlflow.log_params(self._params)
+            self._model.fit(X, y)
 
     def predict(self, X) -> np.ndarray:
         return self._model.predict(X)
