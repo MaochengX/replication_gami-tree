@@ -19,6 +19,9 @@ parser.add_argument("--param_fix", type=str, default="")
 parser.add_argument("--param_tune", type=str, default="")
 args, unknown = parser.parse_known_args()
 
+arg_data = args.data
+arg_inducer = args.inducer
+
 
 def parse_data(args):
     """
@@ -48,7 +51,7 @@ def gather_parameternames(cfg: DictConfig):
 
 
 task = "regression"
-inducer = "ebm"
+inducer = "xgb"
 dataset = "sim4_model4"
 path_conf_inducer = CONF / "inducer" / Path(inducer).with_suffix(".yaml")
 cfg_inducer = OmegaConf.load(path_conf_inducer)
@@ -62,4 +65,3 @@ if {"X_1", "y"}.issubset(set(data.columns)):
     y = data.y
     X = data.drop(columns=["y"])
 inducer_configuration.train(X, y)
-inducer_configuration.get_params()
