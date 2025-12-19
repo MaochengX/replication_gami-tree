@@ -1,23 +1,9 @@
-import argparse
-import sys
-from pathlib import Path
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
-from omegaconf import OmegaConf
-
-ROOT = Path.cwd()
-DATA = ROOT / "data"
-ASSET = ROOT / "assets" / "conf" / "data"
-SIMULATION_CONF = ROOT / "conf" / "data" / "simulation.yaml"
-
-DATA.mkdir(exist_ok=True, parents=True)
-ASSET.mkdir(exist_ok=True, parents=True)
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--filenameprefix", type=str, default="")
-args, unknown = parser.parse_known_args()
-filenameprefix = args.filenameprefix
+from scipy.optimize import brentq
+from scipy.special import expit
 
 
 def model1(X) -> np.ndarray:
@@ -139,62 +125,45 @@ def model4(X) -> np.ndarray:
     return term1 + term2 + term3 + term4 + term5 + term6 + term7
 
 
-def write_data(covariates, modelfunc, prefix=filenameprefix, folderpath=DATA) -> None:
-    # TODO: add noise to y
-    y = modelfunc(covariates)
-    filename_data = prefix + "_" + modelfunc.__name__ + ".pq"
+def set_y(
+    X: pd.DataFrame,
+    task: str,
+    model_func: Callable,
+    y_generator,
+    y_generator_params,
+    rng: np.random.default_rng,
+) -> pd.DataFrame:
+    """
+    Depending whether the task is 'classification' or 'regression' the response has to be adjusted.
 
-    cols = [f"X_{i + 1}" for i in range(covariates.shape[1])]
-    data = pd.DataFrame(covariates, columns=cols)
+    Args:
+        y (pd.Series): _description_
+        task (str): _description_
+
+    Returns:
+        pd.Series: _description_
+    """
+    gx = model_func(X)
+    if task == "regression":
+        y_generator = getattr(
+            rng, y_generator
+        )  # get generator constructor by name, eg. "normal"
+        error_term = y_generator(**y_generator_params)
+        y = gx + error_term
+    elif task == "classification":
+        pi = 0.5
+
+        def f(beta_0):
+            p = expit(gx + beta_0)  # log sigmoid
+            return np.average(p) - pi
+
+        # since sigmoid +- 50 is roughly 0,1 in between must be the optimal value
+        optimal_betal_0 = brentq(f, -50.0, 50)
+        p = expit(gx + optimal_betal_0)
+        y = rng.binomial(n=1, p=p, size=gx.size)
+    else:
+        raise KeyError
+
+    data = pd.DataFrame(X, columns=[f"X_{idx}" for idx in range(1, X.shape[1] + 1)])
     data["y"] = y
-    data.to_parquet(Path(folderpath, filename_data), index=False)
-
-
-def write_configuration(config, filename, folderpath=ASSET):
-    OmegaConf.save(config, Path(folderpath, filename))
-
-
-def numpy_resolver(func_name, *args):
-    fn = getattr(np, func_name)
-    return fn(*[int(a) if str(a).isdigit() else a for a in args])
-
-
-OmegaConf.register_new_resolver("np", numpy_resolver)
-
-
-def equicov(k, corr, var):
-    cov = np.full((k, k), corr)
-    np.fill_diagonal(cov, var)
-    return cov
-
-
-OmegaConf.register_new_resolver(
-    "equicov", lambda k, var, cor: equicov(int(k), float(var), float(cor))
-)
-
-
-cfg = OmegaConf.load(SIMULATION_CONF)
-
-
-# merge command line overrides: key=value pairs
-cli_cfg = OmegaConf.from_dotlist(sys.argv[1:])
-cfg = OmegaConf.merge(cfg, cli_cfg)
-
-rng = np.random.default_rng(cfg.SEED)
-
-
-generator1 = getattr(rng, cfg.x1_generator.name)
-X1 = generator1(**cfg.x1_generator.params)
-
-generator2 = getattr(rng, cfg.x2_generator.name)
-X2 = generator2(**cfg.x2_generator.params)
-
-covariates = np.hstack([X1[:, :10], X2])
-
-write_data(covariates, model1)
-write_data(covariates, model2)
-write_data(covariates, model3)
-write_data(covariates, model4)
-write_configuration(
-    cfg, filename=Path(ASSET, Path(filenameprefix).with_suffix(".yaml"))
-)
+    return data

@@ -1,6 +1,7 @@
 parameters:
   fix:
-    interact_pairs: 45
+    interact_pairs: [45, 60]
+    other: [100, 200]
 
   tune:
     - max_bins

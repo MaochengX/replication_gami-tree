@@ -16,7 +16,7 @@ from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
 from xgboost import XGBRegressor as XGBR
 
-from gami_tree_reproduce.params import EBMParams, GamiNetParams, Params, XGBParams
+from gami_tree_reproduce.model.params import EBMParams, GamiNetParams, Params, XGBParams
 
 Task = Literal["classification", "regression"]
 

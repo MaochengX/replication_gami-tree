@@ -1,4 +1,4 @@
 parameters:
   fix:
-    batch_size: 100
-    interact_num: 45
+    batch_size: [100, 200]
+    interact_num: [45, 20]
