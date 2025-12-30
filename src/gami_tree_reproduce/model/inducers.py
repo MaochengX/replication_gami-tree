@@ -170,7 +170,7 @@ class GamiNetInducer(BaseInducer):
 INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer, "gaminet": GamiNetInducer}
 
 
-def get_inducer(name: str) -> callable:
+def get_inducer_class(name: str) -> callable:
     key = name.lower()
     if key not in INDUCER_REGISTRY:
         raise ValueError

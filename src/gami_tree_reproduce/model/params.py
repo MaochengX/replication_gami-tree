@@ -135,7 +135,7 @@ class XGBParams(BaseParams):
         return params_default
 
 
-class GAMITParams(BaseParams):
+class GamiTreeParams(BaseParams):
     def _validate_params(self, params: dict) -> None:
         pass
 
@@ -164,14 +164,33 @@ class GamiNetParams(BaseParams):
         else:
             params["task_type"] = "Classification"
 
+    def _fill_defaults(self, params: dict, task: str) -> dict:
+        defaults = get_gaminet_defaults(task)
+        params.update(defaults)
 
-PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams}
+
+def get_gaminet_defaults(task: str) -> dict:
+    signature = inspect.signature(GAMINet)
+    defaults = {
+        name: param.default
+        for name, param in signature.parameters.items()
+        if param.default is not inspect._empty()
+    }
+    if task == "regression":
+        defaults["task_type"] = "Regression"
+    else:
+        defaults["task_type"] = "Classification"
+    return defaults
 
 
-def get_parameter(name: str) -> callable:
+PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams, "gaminet": GamiNetParams}
+
+
+def get_parameter_class(name: str) -> callable:
     key = name.lower()
     if key not in PARAMS_REGISTRY:
-        raise ValueError
+        msg = f"No Parameter Class defined for given keyword '{key}'"
+        raise KeyError(msg)
 
     return PARAMS_REGISTRY[key]
 
