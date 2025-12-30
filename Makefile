@@ -1,10 +1,10 @@
 
 .PHONY: sim_data
 sim_data:
-	@uv run python3 src/gami_tree_reproduce/data_simulation.py size=50000 cor=0 --filenameprefix=sim1
-	@uv run python3 src/gami_tree_reproduce/data_simulation.py size=50000 cor=1 --filenameprefix=sim2
-	@uv run python3 src/gami_tree_reproduce/data_simulation.py size=5000 cor=0 --filenameprefix=sim3
-	@uv run python3 src/gami_tree_reproduce/data_simulation.py size=5000 cor=1 --filenameprefix=sim4
+	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0 --filenameprefix=sim1
+	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0.5 --filenameprefix=sim2
+	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0 --filenameprefix=sim3
+	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0.5 --filenameprefix=sim4
 
 .PHONY: clear_sim_data
 clear_sim_data:

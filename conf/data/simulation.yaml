@@ -18,3 +18,12 @@ x2_generator:
     mean: "${np:full, ${x2_covariates}, 0}"
     cov: "${equicov: ${x2_covariates}, ${cor}, ${var}}"
     size: "${size}"
+
+y_generator:
+  name: normal
+  params:
+    loc: 0
+    scale: 0.5
+    size: "${size}"
+
+y_beta: 1
