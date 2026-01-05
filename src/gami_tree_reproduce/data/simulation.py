@@ -54,7 +54,6 @@ for experiment_id, data_dict in enumerate(config_grid):
     covariates = np.hstack([X1[:, :10], X2])
     covariates = np.clip(covariates, -2.5, 2.5)
 
-
     y_generator = cfg.y_generator.name
     y_generator_params = cfg.y_generator.params
 
@@ -62,7 +61,7 @@ for experiment_id, data_dict in enumerate(config_grid):
 
     # Model 1
     data_model1_r = set_y(
-    covariates, "regression", model1, y_generator, y_generator_params, rng
+        covariates, "regression", model1, y_generator, y_generator_params, rng
     )
     save_hdf5(basename + "1r", DATA, data_model1_r, data_dict)
 
@@ -70,7 +69,7 @@ for experiment_id, data_dict in enumerate(config_grid):
         covariates, "classification", model1, y_generator, y_generator_params, rng
     )
     save_hdf5(basename + "1c", DATA, data_model1_c, data_dict)
-    
+
     # Model 2
     data_model2_r = set_y(
         covariates, "regression", model2, y_generator, y_generator_params, rng
