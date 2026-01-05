@@ -2,8 +2,8 @@ SEED: 123
 x1_covariates: 20
 x2_covariates: 10
 var: 1
-cor: 0
-size: 5000
+cor: [0, 0.5]
+size: [5000, 50000]
 
 x1_generator:
   name: multivariate_normal
