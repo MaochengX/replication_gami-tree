@@ -1,48 +1,11 @@
-from itertools import product
 from pathlib import Path
 
 import pandas as pd
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
-
-
-def param_config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
-    """
-    Create a list of all possible parameter configurations.
-
-    Args:
-        cfg_params (OmegaConf): Configuration from yaml read into OmegaConf.
-        no_combo (str, optional): Value for keys that are excluded in calculation of all grid-combinations. Defaults to "tune".
-
-    Returns:
-        list[dict]: A list of dictionaries, where each dictionary corresponds to a certain configuration of parameters.
-
-    Example:
-        > param_config_to_grid({"alpha": [1,2,3], "beta": [1, 2], "gamma": "tune", "delata": 1})
-        > [{"alpha": 1, "beta": 1, "gamma": "tune", "delata": 1}, {"alpha": 2, "beta": 1, "gamma": "tune", "delata": 1},
-             {"alpha": 3, "beta": 1, "gamma": "tune", "delata": 1}, {"alpha": 1, "beta": 2, "gamma": "tune", "delata": 1},
-             {"alpha": 2, "beta": 2, "gamma": "tune", "delata": 1}, {"alpha": 3, "beta": 2, "gamma": "tune", "delata": 1}]
-    """
-    if isinstance(cfg_params, DictConfig):
-        cfg_params = OmegaConf.to_container(cfg_params)
-
-    # tunable hyperparameters are just added in the end to each combination
-    hyperparameter_dict = {}
-    if no_combo in cfg_params:
-        hyperparameter_dict = dict.fromkeys(cfg_params[no_combo], no_combo)
-        cfg_params.pop("tune")
-    param_grid = {
-        k: [v] if not isinstance(v, list) else v for k, v in cfg_params.items()
-    }  # convert to list (iterable) with possibly single element
-    # create the actual grid ad add hyperaprameters
-    param_grid = [
-        dict(zip(param_grid.keys(), combination, strict=True))
-        for combination in product(*param_grid.values())
-    ]
-
-    return [{**d, **hyperparameter_dict} for d in param_grid]
+from gami_tree_reproduce.utils import config_to_grid
 
 
 def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
@@ -59,7 +22,7 @@ def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
     for inducer_yaml in inducers:
         inducer_name = inducer_yaml.stem
         inducer_cfg = OmegaConf.load(inducer_yaml)
-        inducer_grid = param_config_to_grid(inducer_cfg.parameters)
+        inducer_grid = config_to_grid(inducer_cfg.parameters)
         total_grid[inducer_name] = inducer_grid
 
     return total_grid
