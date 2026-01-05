@@ -1,30 +1,23 @@
-import argparse
-import sys
-from pathlib import Path
-
 import numpy as np
 from omegaconf import OmegaConf
 
-from gami_tree_reproduce.data.utils import (
+from gami_tree_reproduce.data.simulation_models import (
     model1,
     model2,
     model3,
     model4,
     set_y,
 )
-
-ROOT = Path.cwd()
-DATA = ROOT / "data"
-ASSET = ROOT / "assets" / "conf" / "data"
-SIMULATION_CONF = ROOT / "conf" / "data" / "simulation.yaml"
+from gami_tree_reproduce.utils import (
+    ASSET,
+    CONF_SIM,
+    DATA,
+    config_to_grid,
+    save_hdf5,
+)
 
 DATA.mkdir(exist_ok=True, parents=True)
 ASSET.mkdir(exist_ok=True, parents=True)
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--filenameprefix", type=str, default="")
-args, unknown = parser.parse_known_args()
-filenameprefix = args.filenameprefix
 
 
 def numpy_resolver(func_name, *args):
@@ -46,65 +39,67 @@ OmegaConf.register_new_resolver(
 )
 
 
-cfg = OmegaConf.load(SIMULATION_CONF)
+cfg = OmegaConf.load(CONF_SIM)
+
+config_grid = config_to_grid(cfg)
+for experiment_id, data_dict in enumerate(config_grid):
+    cfg = OmegaConf.create(data_dict)
+    rng = np.random.default_rng(cfg.SEED)
+
+    generator1 = getattr(rng, cfg.x1_generator.name)
+    X1 = generator1(**cfg.x1_generator.params)
+    generator2 = getattr(rng, cfg.x2_generator.name)
+    X2 = generator2(**cfg.x2_generator.params)
+
+    covariates = np.hstack([X1[:, :10], X2])
+    covariates = np.clip(covariates, -2.5, 2.5)
 
 
-# merge command line overrides: key=value pairs
-cli_cfg = OmegaConf.from_dotlist(sys.argv[1:])
-cfg = OmegaConf.merge(cfg, cli_cfg)
+    y_generator = cfg.y_generator.name
+    y_generator_params = cfg.y_generator.params
 
-rng = np.random.default_rng(cfg.SEED)
+    basename = f"sim{experiment_id + 1}_mod"
 
-
-generator1 = getattr(rng, cfg.x1_generator.name)
-X1 = generator1(**cfg.x1_generator.params)
-
-generator2 = getattr(rng, cfg.x2_generator.name)
-X2 = generator2(**cfg.x2_generator.params)
-
-covariates = np.hstack([X1[:, :10], X2])
-
-
-y_generator = cfg.y_generator.name
-y_generator_params = cfg.y_generator.params
-
-data_model1_r = set_y(
+    # Model 1
+    data_model1_r = set_y(
     covariates, "regression", model1, y_generator, y_generator_params, rng
-)
-data_model1_c = set_y(
-    covariates, "classification", model1, y_generator, y_generator_params, rng
-)
+    )
+    save_hdf5(basename + "1r", DATA, data_model1_r, data_dict)
 
-data_model2_r = set_y(
-    covariates, "regression", model2, y_generator, y_generator_params, rng
-)
-data_model2_c = set_y(
-    covariates, "classification", model2, y_generator, y_generator_params, rng
-)
+    data_model1_c = set_y(
+        covariates, "classification", model1, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "1c", DATA, data_model1_c, data_dict)
+    
+    # Model 2
+    data_model2_r = set_y(
+        covariates, "regression", model2, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "2r", DATA, data_model2_r, data_dict)
 
-data_model3_r = set_y(
-    covariates, "regression", model3, y_generator, y_generator_params, rng
-)
-data_model3_c = set_y(
-    covariates, "classification", model3, y_generator, y_generator_params, rng
-)
+    data_model2_c = set_y(
+        covariates, "classification", model2, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "2c", DATA, data_model2_c, data_dict)
 
-data_model4_r = set_y(
-    covariates, "regression", model4, y_generator, y_generator_params, rng
-)
-data_model4_c = set_y(
-    covariates, "classification", model4, y_generator, y_generator_params, rng
-)
+    # Model 3
+    data_model3_r = set_y(
+        covariates, "regression", model3, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "3r", DATA, data_model3_r, data_dict)
 
+    data_model3_c = set_y(
+        covariates, "classification", model3, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "3c", DATA, data_model3_c, data_dict)
 
-data_model1_c.to_parquet(DATA / "model1c.pq")
-data_model1_r.to_parquet(DATA / "model1r.pq")
+    # Model 4
+    data_model4_r = set_y(
+        covariates, "regression", model4, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "4r", DATA, data_model4_r, data_dict)
 
-data_model2_c.to_parquet(DATA / "model2c.pq")
-data_model2_r.to_parquet(DATA / "model2r.pq")
-
-data_model3_c.to_parquet(DATA / "model3c.pq")
-data_model3_r.to_parquet(DATA / "model3r.pq")
-
-data_model4_c.to_parquet(DATA / "model4c.pq")
-data_model4_r.to_parquet(DATA / "model4r.pq")
+    data_model4_c = set_y(
+        covariates, "classification", model4, y_generator, y_generator_params, rng
+    )
+    save_hdf5(basename + "4c", DATA, data_model4_c, data_dict)
