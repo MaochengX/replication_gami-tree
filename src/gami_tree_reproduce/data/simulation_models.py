@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 import numpy as np
 import pandas as pd
 from scipy.optimize import brentq
@@ -125,45 +123,38 @@ def model4(X) -> np.ndarray:
     return term1 + term2 + term3 + term4 + term5 + term6 + term7
 
 
-def set_y(
-    X: pd.DataFrame,
-    task: str,
-    model_func: Callable,
-    y_generator,
-    y_generator_params,
-    rng: np.random.default_rng,
+def set_y_r(
+    X: pd.DataFrame, model_func, y_generator_r, y_generator_r_params
 ) -> pd.DataFrame:
-    """
-    Depending whether the task is 'classification' or 'regression' the response has to be adjusted.
-
-    Args:
-        y (pd.Series): _description_
-        task (str): _description_
-
-    Returns:
-        pd.Series: _description_
-    """
     gx = model_func(X)
-    if task == "regression":
-        y_generator = getattr(
-            rng, y_generator
-        )  # get generator constructor by name, eg. "normal"
-        error_term = y_generator(**y_generator_params)
-        y = gx + error_term
-    elif task == "classification":
-        pi = 0.5
-
-        def f(beta_0):
-            p = expit(gx + beta_0)  # log sigmoid
-            return np.average(p) - pi
-
-        # since sigmoid +- 50 is roughly 0,1 in between must be the optimal value
-        optimal_betal_0 = brentq(f, -50.0, 50)
-        p = expit(gx + optimal_betal_0)
-        y = rng.binomial(n=1, p=p, size=gx.size)
-    else:
-        raise KeyError
-
+    error_term = y_generator_r(**y_generator_r_params)
+    y = gx + error_term
     data = pd.DataFrame(X, columns=[f"X_{idx}" for idx in range(1, X.shape[1] + 1)])
     data["y"] = y
+
+    return data
+
+
+def calc_p(gx):
+    pi = 0.5
+
+    def f(beta_0):
+        p = expit(gx + beta_0)  # log sigmoid
+        return np.average(p) - pi
+
+    beta_0_opt = brentq(f, -50.0, 50)
+
+    return expit(gx + beta_0_opt)
+
+
+def set_y_c(
+    X: pd.DataFrame, model_func, y_generator_c, y_generator_c_params
+) -> pd.DataFrame:
+    gx = model_func(X)
+    p = calc_p(gx)
+    y_generator_c_params.update({"p": p})
+    y = y_generator_c(**y_generator_c_params)
+    data = pd.DataFrame(X, columns=[f"X_{idx}" for idx in range(1, X.shape[1] + 1)])
+    data["y"] = y
+
     return data
