@@ -1,15 +1,20 @@
-import json
 from itertools import product
 from pathlib import Path
 
-import h5py
-import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-ASSET = ROOT / "assets" / "conf" / "data"
-CONF_SIM = ROOT / "conf" / "data" / "simulation.yaml"
+ASSETS = ROOT / "assets"
+ASSETS_SIM_CONF = ASSETS / "conf" / "sim"
+
+
+CONF_SIM_YAML = ROOT / "conf" / "data" / "simulation.yaml"
+
+
+DATA.mkdir(parents=True, exist_ok=True)
+ASSETS.mkdir(parents=True, exist_ok=True)
+ASSETS_SIM_CONF.mkdir(parents=True, exist_ok=True)
 
 
 def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
@@ -47,12 +52,3 @@ def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
     ]
 
     return [{**d, **hyperparameter_dict} for d in param_grid]
-
-
-def save_hdf5(
-    name: str, destination_folder: Path, data: pd.DataFrame, metadata: dict
-) -> None:
-    fullname = Path(destination_folder, Path(name).with_suffix(".hdf5"))
-    with h5py.File(fullname, "w") as f:
-        dset = f.create_dataset(data=data, name=name)
-        dset.attrs["metadata"] = json.dumps(metadata)
