@@ -7,14 +7,14 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 ASSETS = ROOT / "assets"
 ASSETS_SIM_CONF = ASSETS / "conf" / "sim"
-
+ASSETS_PLOTS = ASSETS / "plots"
 
 CONF_SIM_YAML = ROOT / "conf" / "data" / "simulation.yaml"
-
 
 DATA.mkdir(parents=True, exist_ok=True)
 ASSETS.mkdir(parents=True, exist_ok=True)
 ASSETS_SIM_CONF.mkdir(parents=True, exist_ok=True)
+ASSETS_PLOTS.mkdir(parents=True, exist_ok=True)
 
 
 def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
