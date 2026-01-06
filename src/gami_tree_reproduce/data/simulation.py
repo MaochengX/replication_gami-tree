@@ -28,7 +28,7 @@ for experiment_id, data_dict in enumerate(config_grid):
 
     # Save metadata
     with Path.open(
-        ASSETS_SIM_CONF / Path(f"sim_{experiment_id + 1}").with_suffix(".yaml"), "w"
+        ASSETS_SIM_CONF / Path(f"sim{experiment_id + 1}").with_suffix(".yaml"), "w"
     ) as metafile:
         yaml.dump(data_dict, metafile)
 
