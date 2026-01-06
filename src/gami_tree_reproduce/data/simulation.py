@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import numpy as np
 from omegaconf import OmegaConf
 
@@ -9,15 +12,11 @@ from gami_tree_reproduce.data.simulation_models import (
     set_y,
 )
 from gami_tree_reproduce.utils import (
-    ASSET,
-    CONF_SIM,
+    ASSETS_SIM_CONF,
+    CONF_SIM_YAML,
     DATA,
     config_to_grid,
-    save_hdf5,
 )
-
-DATA.mkdir(exist_ok=True, parents=True)
-ASSET.mkdir(exist_ok=True, parents=True)
 
 
 def numpy_resolver(func_name, *args):
@@ -39,7 +38,7 @@ OmegaConf.register_new_resolver(
 )
 
 
-cfg = OmegaConf.load(CONF_SIM)
+cfg = OmegaConf.load(CONF_SIM_YAML)
 
 config_grid = config_to_grid(cfg)
 for experiment_id, data_dict in enumerate(config_grid):
@@ -59,46 +58,52 @@ for experiment_id, data_dict in enumerate(config_grid):
 
     basename = f"sim{experiment_id + 1}_mod"
 
+    # Save metadata
+    with Path.open(
+        ASSETS_SIM_CONF / Path(f"sim_{experiment_id + 1}").with_suffix(".json"), "w"
+    ) as metafile:
+        json.dump(data_dict, metafile)
+
     # Model 1
     data_model1_r = set_y(
         covariates, "regression", model1, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "1r", DATA, data_model1_r, data_dict)
+    data_model1_r.to_parquet(DATA / Path(basename + "1r"))
 
     data_model1_c = set_y(
         covariates, "classification", model1, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "1c", DATA, data_model1_c, data_dict)
+    data_model1_c.to_parquet(DATA / Path(basename + "1c"))
 
     # Model 2
     data_model2_r = set_y(
         covariates, "regression", model2, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "2r", DATA, data_model2_r, data_dict)
+    data_model2_r.to_parquet(DATA / Path(basename + "2r"))
 
     data_model2_c = set_y(
         covariates, "classification", model2, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "2c", DATA, data_model2_c, data_dict)
+    data_model2_c.to_parquet(DATA / Path(basename + "2c"))
 
     # Model 3
     data_model3_r = set_y(
         covariates, "regression", model3, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "3r", DATA, data_model3_r, data_dict)
+    data_model3_r.to_parquet(DATA / Path(basename + "3r"))
 
     data_model3_c = set_y(
         covariates, "classification", model3, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "3c", DATA, data_model3_c, data_dict)
+    data_model3_c.to_parquet(DATA / Path(basename + "3c"))
 
     # Model 4
     data_model4_r = set_y(
         covariates, "regression", model4, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "4r", DATA, data_model4_r, data_dict)
+    data_model4_r.to_parquet(DATA / Path(basename + "4r"))
 
     data_model4_c = set_y(
         covariates, "classification", model4, y_generator, y_generator_params, rng
     )
-    save_hdf5(basename + "4c", DATA, data_model4_c, data_dict)
+    data_model4_c.to_parquet(DATA / Path(basename + "4c"))
