@@ -20,7 +20,7 @@ config_grid = config_to_grid(cfg)
 for experiment_id, data_dict in enumerate(config_grid):
     cfg = dict_to_omegaconf(data_dict)
 
-    model1r, model1c, model2r, model2c, model3r, model3c, model4r, model4c = (
+    (model1c, model2c, model3c, model4c), (model1r, model2r, model3r, model4r) = (
         sample_data_models(cfg)
     )
 
