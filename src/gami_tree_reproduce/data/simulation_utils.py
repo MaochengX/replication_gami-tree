@@ -88,4 +88,4 @@ def sample_data_models(cfg: DictConfig):
     model4c = set_y_c(covariates, model4, y_generator_c, y_c_params)
     model4r = set_y_r(covariates, model4, y_generator_r, y_r_params)
 
-    return model1c, model1r, model2c, model2r, model3c, model3r, model4c, model4r
+    return (model1c, model2c, model3c, model4c), (model1r, model2r, model3r, model4r)
