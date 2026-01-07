@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 ASSETS = ROOT / "assets"
 ASSETS_SIM_CONF = ASSETS / "conf" / "sim"
-ASSETS_PLOTS = ASSETS / "plots"
+ASSETS_PLOTS = ASSETS / "plots"  # for simulation data (DATA) and model data (MODEL)
+ASSETS_PLOTS_DATA = ASSETS_PLOTS / "data"
+ASSETS_PLOTS_MODEL = ASSETS_PLOTS / "model"
 
 CONF_SIM_YAML = ROOT / "conf" / "data" / "simulation.yaml"
 
