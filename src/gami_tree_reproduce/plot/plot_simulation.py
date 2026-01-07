@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from gami_tree_reproduce.plots.plot_utils import plot_response, save_fig
+from gami_tree_reproduce.plot.plot_utils import plot_response, save_fig
 from gami_tree_reproduce.utils import ASSETS_SIM_CONF, DATA
 
 datasets = list(Path(DATA).glob("sim*_mod*[cr].pq"))
