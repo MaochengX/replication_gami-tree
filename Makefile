@@ -26,7 +26,7 @@ clear_data:
 	@rm -rf assets/conf/sim
 	@rm -rf assets/plots/data
 	@mkdir data
-	@mkdir assets/conf
+	@mkdir assets/conf/sim
 	@mkdir assets/plots/data
 	@echo "🧹 cleared data/"
 	@echo "🧹 cleared assets/conf/sim"
