@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from gami_tree_reproduce.utils import ASSETS_PLOTS
+from gami_tree_reproduce.utils import ASSETS_PLOTS_DATA
 
 
 def get_plt_grid(len_objects: int, n_cols: int = 3, figsize=(12, 8)):
@@ -59,10 +59,12 @@ def plot_response(
 def save_fig(
     fig: plt.figure,
     filename: str,
-    destination_folder: Path = ASSETS_PLOTS,
+    destination_folder: Path = ASSETS_PLOTS_DATA,
     save_kwargs=None,
 ) -> None:
     if save_kwargs is None:
         save_kwargs = {}
+
+    destination_folder.mkdir(parents=True, exist_ok=True)
 
     fig.savefig(destination_folder / Path(filename).with_suffix(".png"))
