@@ -12,6 +12,7 @@ ASSETS_PLOTS_DATA = ASSETS_PLOTS / "data"
 ASSETS_PLOTS_MODEL = ASSETS_PLOTS / "model"
 
 CONF_SIM_YAML = ROOT / "conf" / "data" / "simulation.yaml"
+CONF_INDUCER = ROOT / "conf" / "inducer"
 
 DATA.mkdir(parents=True, exist_ok=True)
 ASSETS.mkdir(parents=True, exist_ok=True)

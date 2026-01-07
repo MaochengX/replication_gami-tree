@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
-from gami_tree_reproduce.utils import config_to_grid
+from gami_tree_reproduce.utils import CONF_INDUCER, DATA, config_to_grid
 
 
 def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
@@ -50,17 +50,8 @@ def add_list_to_grid(key_name: str, value_list: list, grid: list[dict]) -> list[
     return [{**config, f"{key_name}": value} for config in grid for value in value_list]
 
 
-def do_experiment(): ...
-
-
-ROOT = Path.cwd()
-CONF = ROOT / "conf"
-DATA = ROOT / "data"
-ASSETS = ROOT / "assets"
-
-
 datasets_paths = list(DATA.glob("*.pq"))
-configs_inducer = list(Path(CONF / "inducer").glob("*.yaml"))
+configs_inducer = list(Path(CONF_INDUCER / "inducer").glob("*.yaml"))
 
 inducers_dictionary_grid = get_inducer_dictionary_grid(configs_inducer)
 
