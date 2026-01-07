@@ -1,7 +1,6 @@
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 
-
 .PHONY: crate_sim_data
 create_sim_data:
 	$(PYTHON) src/gami_tree_reproduce/data/simulation.py
@@ -15,7 +14,6 @@ create_plots_sim:
 .PHONY: show_plots
 show_plots:
 	@display assets/plots/*.png
-
 
 .PHONY: create_openml_data
 create_openml_data:
@@ -33,7 +31,6 @@ clear_data:
 	@echo "🧹 cleared data/"
 	@echo "🧹 cleared assets/conf/sim"
 	@echo "🧹 cleared assets/conf/data"
-
 
 
 
