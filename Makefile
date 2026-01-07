@@ -7,11 +7,20 @@ sim_data:
 	$(PYTHON) src/gami_tree_reproduce/data/simulation.py
 	@echo "🚀 data simulation completed"
 
+.PHONY: plot_sim
+plot_sim:
+	$(PYTHON) src/gami_tree_reproduce/plot/plot_simulation.py
+	@echo "📊 simulation data plots created"
+
+.PHONY: show_plots
+show_plots:
+	@display assets/plots/*.png
+
+
 .PHONY: openml
 openml:
-	$(PYTHON) src/gami_tree_reproduce/data_openml.py
+	$(PYTHON) src/gami_tree_reproduce/data/data_openml.py
 	@echo "🚀 downloaded data from openml"
-
 
 .PHONY: clear_data
 clear_data:
