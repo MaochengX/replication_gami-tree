@@ -38,13 +38,12 @@ keywords = [
     "gami-tree"
 ]
 dependencies = [
-    "fastparquet>=2024.11.0",
-    "gaminet>=0.6.1",
-    "interpret>=0.7.3",
-    "mlflow>=3.7.0",
-    "numpy>=2.2.6",
+    "h5py>=3.15.1",
+    "matplotlib>=3.10.8",
+    "omegaconf>=2.3.0",
+    "pandas>=2.3.3",
     "pyarrow>=22.0.0",
-    "xgboost>=3.1.2",
+    "scipy>=1.15.3",
 ]
 
 [project.urls]
@@ -171,3 +170,9 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

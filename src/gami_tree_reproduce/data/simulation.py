@@ -1,110 +1,53 @@
-import argparse
-import sys
 from pathlib import Path
 
-import numpy as np
-from omegaconf import OmegaConf
+import yaml
 
-from gami_tree_reproduce.data.utils import (
-    model1,
-    model2,
-    model3,
-    model4,
-    set_y,
+from gami_tree_reproduce.data.simulation_utils import (
+    dict_to_omegaconf,
+    sample_data_models,
+    yaml_to_omegaconf,
+)
+from gami_tree_reproduce.utils import (
+    ASSETS_SIM_CONF,
+    CONF_SIM_YAML,
+    DATA,
+    config_to_grid,
 )
 
-ROOT = Path.cwd()
-DATA = ROOT / "data"
-ASSET = ROOT / "assets" / "conf" / "data"
-SIMULATION_CONF = ROOT / "conf" / "data" / "simulation.yaml"
+cfg = yaml_to_omegaconf(CONF_SIM_YAML)
 
-DATA.mkdir(exist_ok=True, parents=True)
-ASSET.mkdir(exist_ok=True, parents=True)
+config_grid = config_to_grid(cfg)
+for experiment_id, data_dict in enumerate(config_grid):
+    cfg = dict_to_omegaconf(data_dict)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--filenameprefix", type=str, default="")
-args, unknown = parser.parse_known_args()
-filenameprefix = args.filenameprefix
+    (model1c, model2c, model3c, model4c), (model1r, model2r, model3r, model4r) = (
+        sample_data_models(cfg)
+    )
 
+    basename = f"sim{experiment_id + 1}_mod"
 
-def numpy_resolver(func_name, *args):
-    fn = getattr(np, func_name)
-    return fn(*[int(a) if str(a).isdigit() else a for a in args])
+    # Save metadata
+    with Path.open(
+        ASSETS_SIM_CONF / Path(f"sim{experiment_id + 1}").with_suffix(".yaml"), "w"
+    ) as metafile:
+        yaml.dump(data_dict, metafile)
 
+    # Model 1
+    model1r.to_parquet(DATA / Path(basename + "1r.pq"))
 
-OmegaConf.register_new_resolver("np", numpy_resolver)
+    model1c.to_parquet(DATA / Path(basename + "1c.pq"))
 
+    # Model 2
+    model2r.to_parquet(DATA / Path(basename + "2r.pq"))
 
-def equicov(k, corr, var):
-    cov = np.full((k, k), corr)
-    np.fill_diagonal(cov, var)
-    return cov
+    model2c.to_parquet(DATA / Path(basename + "2c.pq"))
 
+    # Model 3
+    model3r.to_parquet(DATA / Path(basename + "3r.pq"))
 
-OmegaConf.register_new_resolver(
-    "equicov", lambda k, var, cor: equicov(int(k), float(var), float(cor))
-)
+    model3c.to_parquet(DATA / Path(basename + "3c.pq"))
 
+    # Model 4
+    model4r.to_parquet(DATA / Path(basename + "4r.pq"))
 
-cfg = OmegaConf.load(SIMULATION_CONF)
-
-
-# merge command line overrides: key=value pairs
-cli_cfg = OmegaConf.from_dotlist(sys.argv[1:])
-cfg = OmegaConf.merge(cfg, cli_cfg)
-
-rng = np.random.default_rng(cfg.SEED)
-
-
-generator1 = getattr(rng, cfg.x1_generator.name)
-X1 = generator1(**cfg.x1_generator.params)
-
-generator2 = getattr(rng, cfg.x2_generator.name)
-X2 = generator2(**cfg.x2_generator.params)
-
-covariates = np.hstack([X1[:, :10], X2])
-
-
-y_generator = cfg.y_generator.name
-y_generator_params = cfg.y_generator.params
-
-data_model1_r = set_y(
-    covariates, "regression", model1, y_generator, y_generator_params, rng
-)
-data_model1_c = set_y(
-    covariates, "classification", model1, y_generator, y_generator_params, rng
-)
-
-data_model2_r = set_y(
-    covariates, "regression", model2, y_generator, y_generator_params, rng
-)
-data_model2_c = set_y(
-    covariates, "classification", model2, y_generator, y_generator_params, rng
-)
-
-data_model3_r = set_y(
-    covariates, "regression", model3, y_generator, y_generator_params, rng
-)
-data_model3_c = set_y(
-    covariates, "classification", model3, y_generator, y_generator_params, rng
-)
-
-data_model4_r = set_y(
-    covariates, "regression", model4, y_generator, y_generator_params, rng
-)
-data_model4_c = set_y(
-    covariates, "classification", model4, y_generator, y_generator_params, rng
-)
-
-
-data_model1_c.to_parquet(DATA / "model1c.pq")
-data_model1_r.to_parquet(DATA / "model1r.pq")
-
-data_model2_c.to_parquet(DATA / "model2c.pq")
-data_model2_r.to_parquet(DATA / "model2r.pq")
-
-data_model3_c.to_parquet(DATA / "model3c.pq")
-data_model3_r.to_parquet(DATA / "model3r.pq")
-
-data_model4_c.to_parquet(DATA / "model4c.pq")
-data_model4_r.to_parquet(DATA / "model4r.pq")
+    model4c.to_parquet(DATA / Path(basename + "4c.pq"))

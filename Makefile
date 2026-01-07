@@ -1,37 +1,34 @@
+VENV := .venv
+PYTHON := $(VENV)/bin/python
+
 
 .PHONY: sim_data
 sim_data:
-	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0 --filenameprefix=sim1
-	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0.5 --filenameprefix=sim2
-	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0 --filenameprefix=sim3
-	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0.5 --filenameprefix=sim4
-
-.PHONY: clear_sim_data
-clear_sim_data:
-	@find data -maxdepth 1 -type f -name "sim*" -delete
-	@rm assets/conf/data -rf
-
-
+	$(PYTHON) src/gami_tree_reproduce/data/simulation.py
+	@echo "🚀 data simulation completed"
 
 .PHONY: openml
 openml:
-	@uv run src/gami_tree_reproduce/data_openml.py
-
-.PHONY: clear_openml_data
-clear_openml:
-	@find data -maxdepth 1 -type f ! -name "sim*" -delete
+	$(PYTHON) src/gami_tree_reproduce/data_openml.py
+	@echo "🚀 downloaded data from openml"
 
 
 .PHONY: clear_data
-clear_data: clear_sim_data clear_openml_data
+clear_data:
+	@rm -rf data
+	@rm -rf assets/conf/sim
+	@mkdir data
+	@echo "🧹 cleared data/ and assets/conf/sim/"
+
 
 
 run_simulation:
-	@uv run src/gami_tree_reproduce/main.py
+	$(PYTHON) src/gami_tree_reproduce/main.py
+	@echo "🧪 simulation experiment finished"
 
 clear_runs:
 	@rm assets/simulation_runs -rf
-	@echo "🧹 remove asets/simulation_runs/"
+	@echo "🧹 remove assets/simulation_runs/"
 
 # Alias:
 clear: clean
