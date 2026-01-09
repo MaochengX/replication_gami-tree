@@ -32,11 +32,15 @@ clear_data:
 	@echo "🧹 cleared assets/conf/sim"
 	@echo "🧹 cleared assets/conf/data"
 
-
+.PHONY: clear_preprocessed
+clear_preprocessed:
+	@rm -rf data/preprocessed
+	@mkdir data/preprocessed
+	@echo "🧹 cleared data/preprocessed"
 
 run_simulation:
 	$(PYTHON) src/gami_tree_reproduce/main.py
-	@echo "🧪 simulation experiment finished"
+	@echo "🧪 experiment simulations finished"
 
 clear_runs:
 	@rm assets/simulation_runs -rf
