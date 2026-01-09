@@ -1,0 +1,16 @@
+project_root: ${oc.env:PROJECT_ROOT} #assume env. variable project_root set before!
+
+paths:
+  folder:
+    data: ${project_root}/data
+    assets: ${project_root}/assets
+    assets_plots: ${paths.folder.assets}/plots
+    assets_conf: ${paths.folder.assets}/conf
+    assets_conf_experiments: ${paths.folder.assets_conf}/experiments
+    assets_conf_simdata: ${paths.folder.assets_conf}/sim
+    conf: ${project_root}/conf
+    conf_inducer: ${paths.folder.conf}/conf_inducer
+
+  file:
+    conf_data_openml: ${paths.folder.conf}/data/openml.yaml
+    conf_data_simulation: ${paths.folder.conf}/data/simulation.yaml

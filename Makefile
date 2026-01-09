@@ -1,7 +1,7 @@
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 
-.PHONY: crate_sim_data
+.PHONY: create_sim_data
 create_sim_data:
 	$(PYTHON) src/gami_tree_reproduce/data/simulation.py
 	@echo "🚀 data simulation completed"
