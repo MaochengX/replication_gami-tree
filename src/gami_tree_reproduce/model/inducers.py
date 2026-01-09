@@ -5,7 +5,6 @@ for parameter tracking, training and prediction.
 """
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, Literal, get_args
 
 import mlflow
@@ -19,10 +18,6 @@ from xgboost import XGBRegressor as XGBR
 from gami_tree_reproduce.model.params import EBMParams, GamiNetParams, Params, XGBParams
 
 Task = Literal["classification", "regression"]
-
-ROOT = Path.cwd()
-ASSETS = ROOT / "assets"
-mlflow.set_tracking_uri(ASSETS)
 
 
 class BaseInducer(ABC):

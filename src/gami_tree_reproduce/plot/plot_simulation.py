@@ -1,10 +1,10 @@
 import re
-from pathlib import Path
 
 from gami_tree_reproduce.plot.plot_utils import plot_response, save_fig
-from gami_tree_reproduce.utils import ASSETS_SIM_CONF, DATA
+from gami_tree_reproduce.utils import get_project_paths
 
-datasets = list(Path(DATA).glob("sim*_mod*[cr].pq"))
+project_paths = get_project_paths()
+datasets = list(project_paths["data"].glob("sim*_mod*[cr].pq"))
 msg = "It appears the are no .pq files in data folder. \n You might want to run `make create_sim_data`."
 assert len(datasets) > 0, msg
 
@@ -14,7 +14,7 @@ pattern_r = re.compile(r"sim\d+_mod\d+r")
 datasets_c = [path for path in datasets if pattern_c.search(path.name)]
 datasets_r = [path for path in datasets if pattern_r.search(path.name)]
 
-simulation_settings = list(Path(ASSETS_SIM_CONF).glob("*.yaml"))
+simulation_settings = list(project_paths["assets_conf_simdata"].glob("*.yaml"))
 simulation_names = [s.stem for s in simulation_settings]
 
 datasets_c_dict = {

@@ -1,23 +1,33 @@
+import os
 from itertools import product
 from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-ASSETS = ROOT / "assets"
-ASSETS_SIM_CONF = ASSETS / "conf" / "sim"
-ASSETS_PLOTS = ASSETS / "plots"  # for simulation data (DATA) and model data (MODEL)
-ASSETS_PLOTS_DATA = ASSETS_PLOTS / "data"
-ASSETS_PLOTS_MODEL = ASSETS_PLOTS / "model"
+project_root = Path(__file__).resolve().parents[2]
+os.environ.setdefault("PROJECT_ROOT", str(project_root))
 
-CONF_SIM_YAML = ROOT / "conf" / "data" / "simulation.yaml"
-CONF_INDUCER = ROOT / "conf" / "inducer"
 
-DATA.mkdir(parents=True, exist_ok=True)
-ASSETS.mkdir(parents=True, exist_ok=True)
-ASSETS_SIM_CONF.mkdir(parents=True, exist_ok=True)
-ASSETS_PLOTS.mkdir(parents=True, exist_ok=True)
+def get_project_paths(
+    path_to_config: Path = Path(project_root / "conf" / "config.yaml"),
+    create: bool = True,
+):
+    config = OmegaConf.load(path_to_config)
+    OmegaConf.resolve(config)
+
+    path_folders = config.paths.folder
+    path_files = config.paths.file
+    paths = {key: Path(path_str) for key, path_str in path_folders.items()}
+
+    if create:
+        for path in paths.values():
+            path.mkdir(parents=True, exist_ok=True)
+
+    path_files = {key: Path(path_str) for key, path_str in path_files.items()}
+
+    paths.update(path_files)
+
+    return paths
 
 
 def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
