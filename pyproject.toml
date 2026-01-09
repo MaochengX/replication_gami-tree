@@ -14,7 +14,7 @@ description = "Gami_tree study with reproduction"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = "==3.10.*"
 classifiers = [
   "Development Status :: 1 - Planning",
   "Intended Audience :: Science/Research",
@@ -23,10 +23,6 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Typing :: Typed",
 ]
@@ -38,12 +34,14 @@ keywords = [
     "gami-tree"
 ]
 dependencies = [
-    "h5py>=3.15.1",
+    "gaminet>=0.6.1",
+    "interpret>=0.7.4",
     "matplotlib>=3.10.8",
     "omegaconf>=2.3.0",
     "pandas>=2.3.3",
     "pyarrow>=22.0.0",
     "scipy>=1.15.3",
+    "xgboost>=3.1.2",
 ]
 
 [project.urls]
@@ -51,7 +49,6 @@ Homepage = "https://github.com/MaochengX/Gami_tree_reproduce"
 "Bug Tracker" = "https://github.com/MaochengX/Gami_tree_reproduce/issues"
 Discussions = "https://github.com/MaochengX/Gami_tree_reproduce/discussions"
 Changelog = "https://github.com/MaochengX/Gami_tree_reproduce/releases"
-
 
 [dependency-groups] # cf. PEP 735
 test = [
@@ -75,7 +72,7 @@ docs = [
 [tool.uv.sources]
 
 [tool.uv]
-package = false
+package = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
