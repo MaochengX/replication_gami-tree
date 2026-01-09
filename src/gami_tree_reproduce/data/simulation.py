@@ -15,7 +15,7 @@ from gami_tree_reproduce.utils import (
 project_paths = get_project_paths()
 
 cfg = yaml_to_omegaconf(project_paths["conf_data_simulation"])
-data_path = project_paths["data"]
+data_path = project_paths["data_raw"]
 
 config_grid = config_to_grid(cfg)
 for simulation_id, data_dict in enumerate(config_grid):

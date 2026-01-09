@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal, TypeVar, get_args
 
-from gaminet import GAMINet
+# from gaminet import GAMINet
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
@@ -140,50 +140,50 @@ class GamiTreeParams(BaseParams):
         pass
 
 
-class GamiNetParams(BaseParams):
-    def _validate_params(self, params: dict) -> None:
-        keys_to_check = list(params.keys())
-        signature = get_signature(GAMINet)
-        expected_parameter_keys = list(signature.keys())
+# class GamiNetParams(BaseParams):
+#     def _validate_params(self, params: dict) -> None:
+#         keys_to_check = list(params.keys())
+#         signature = get_signature(GAMINet)
+#         expected_parameter_keys = list(signature.keys())
 
-        conditions = [key in expected_parameter_keys for key in keys_to_check]
-        faulty_keys = [
-            key
-            for key, condition in zip(keys_to_check, conditions, strict=True)
-            if not condition
-        ]
+#         conditions = [key in expected_parameter_keys for key in keys_to_check]
+#         faulty_keys = [
+#             key
+#             for key, condition in zip(keys_to_check, conditions, strict=True)
+#             if not condition
+#         ]
 
-        if not all(conditions):
-            msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
-            raise ValueError(msg)
+#         if not all(conditions):
+#             msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
+#             raise ValueError(msg)
 
-    def __init__(self, task: Task, params: dict):
-        # API uses Catital case, see https://github.com/ZebinYang/gaminet
-        if task == "regression":
-            params["task_type"] = "Regression"
-        else:
-            params["task_type"] = "Classification"
+#     def __init__(self, task: Task, params: dict):
+#         # API uses Catital case, see https://github.com/ZebinYang/gaminet
+#         if task == "regression":
+#             params["task_type"] = "Regression"
+#         else:
+#             params["task_type"] = "Classification"
 
-    def _fill_defaults(self, params: dict, task: str) -> dict:
-        defaults = get_gaminet_defaults(task)
-        params.update(defaults)
-
-
-def get_gaminet_defaults(task: str) -> dict:
-    signature = inspect.signature(GAMINet)
-    defaults = {
-        name: param.default
-        for name, param in signature.parameters.items()
-        if param.default is not inspect._empty()
-    }
-    if task == "regression":
-        defaults["task_type"] = "Regression"
-    else:
-        defaults["task_type"] = "Classification"
-    return defaults
+#     def _fill_defaults(self, params: dict, task: str) -> dict:
+#         defaults = get_gaminet_defaults(task)
+#         params.update(defaults)
 
 
-PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams, "gaminet": GamiNetParams}
+# def get_gaminet_defaults(task: str) -> dict:
+#     signature = inspect.signature(GAMINet)
+#     defaults = {
+#         name: param.default
+#         for name, param in signature.parameters.items()
+#         if param.default is not inspect._empty()
+#     }
+#     if task == "regression":
+#         defaults["task_type"] = "Regression"
+#     else:
+#         defaults["task_type"] = "Classification"
+#     return defaults
+
+
+PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams}
 
 
 def get_parameter_class(name: str) -> callable:

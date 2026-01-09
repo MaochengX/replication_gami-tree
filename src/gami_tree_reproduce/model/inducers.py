@@ -7,15 +7,15 @@ for parameter tracking, training and prediction.
 from abc import ABC, abstractmethod
 from typing import Any, Literal, get_args
 
-import mlflow
 import numpy as np
-from gaminet import GAMINet
+
+# from gaminet import GAMINet
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
-from xgboost import XGBClassifier as XGBC
-from xgboost import XGBRegressor as XGBR
+from xgboost import XGBClassifier as XGBC  # xgbs scikit learn api
+from xgboost import XGBRegressor as XGBR  # xgbs scikit learn api
 
-from gami_tree_reproduce.model.params import EBMParams, GamiNetParams, Params, XGBParams
+from gami_tree_reproduce.model.params import EBMParams, Params, XGBParams
 
 Task = Literal["classification", "regression"]
 
@@ -125,49 +125,43 @@ class XGBinducer(BaseInducer):
     def param_class(self):
         return XGBParams
 
-    def train(self, X, y) -> None:
-        with mlflow.start_run(run_name="xgb"):
-            mlflow.log_params(self._params)
-            self._model.fit(X, y)
+    def train(self, X, y) -> None: ...
 
     def predict(self, X) -> np.ndarray:
         return self._model.predict(X)
 
 
-class GamiNetInducer(BaseInducer):
-    """ "
-    Docstring
-    """
+# class GamiNetInducer(BaseInducer):
+#     """ "
+#     Docstring
+#     """
 
-    @property
-    def classifier_class(self) -> type[GAMINet]:
-        return GAMINet
+#     @property
+#     def classifier_class(self) -> type[GAMINet]:
+#         return GAMINet
 
-    @property
-    def regressor_class(self) -> type[GAMINet]:
-        return GAMINet
+#     @property
+#     def regressor_class(self) -> type[GAMINet]:
+#         return GAMINet
 
-    @property
-    def param_class(self):
-        return GamiNetParams
+#     @property
+#     def param_class(self):
+#         return GamiNetParams
 
-    def train(self, X, y) -> None:
-        self._model.fit(X, y)
+#     def train(self, X, y) -> None:
+#         self._model.fit(X, y)
 
-    def predict(self, X) -> np.ndarray:
-        return self._model.predict(X)
+#     def predict(self, X) -> np.ndarray:
+#         return self._model.predict(X)
 
 
-######################################################################################
-# for usage only access should be done via imported getter function and class registry
-######################################################################################
-
-INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer, "gaminet": GamiNetInducer}
+INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer}
 
 
 def get_inducer_class(name: str) -> callable:
     key = name.lower()
     if key not in INDUCER_REGISTRY:
-        raise ValueError
+        msg = f"There is no inducer '{key}' that is registered."
+        raise KeyError(msg)
 
     return INDUCER_REGISTRY[key]
