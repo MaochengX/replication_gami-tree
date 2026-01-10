@@ -1,29 +1,29 @@
-"""
-Wrap each inducer in a wrapper class that provides common API.
-Since most of the ML algorithms used are not standard each inducer has its own API that requires different implementation
-for parameter tracking, training and prediction.
-"""
-
 from abc import ABC, abstractmethod
-from typing import Any, Literal, get_args
+from typing import Literal, get_args
 
 import numpy as np
+import pandas as pd
 
 # from gaminet import GAMINet
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
+from typing_extensions import override
 from xgboost import XGBClassifier as XGBC  # xgbs scikit learn api
 from xgboost import XGBRegressor as XGBR  # xgbs scikit learn api
 
-from gami_tree_reproduce.model.params import EBMParams, Params, XGBParams
+from gami_tree_reproduce.model.params import BaseParams, EBMParams, Params, XGBParams
+from gami_tree_reproduce.utils import get_project_paths
+
+project_paths = get_project_paths()
 
 Task = Literal["classification", "regression"]
 
 
 class BaseInducer(ABC):
     """
-    Class template for inducer classes.
-    This serves as a wrapper for the various imported inducer algorithms.
+    Docstring for BaseInducer
+
+    :var Args: Description
     """
 
     @property
@@ -61,26 +61,89 @@ class BaseInducer(ABC):
             msg = f"Expected task to be type 'Task' but got {type(task)}"
             raise TypeError(msg)
 
-        self._params = params_wrapper.get_params()
+        self._params_wrapper = params_wrapper
         self._task = task
+        self._is_trained = False
+
+        self._X_train = None
+        self._y_train = None
+        self._X_val = None
+        self._y_val = None
+        self._X_test = None
+        self._y_test = None
 
         model_class = (
             self.classifier_class if task == "classification" else self.regressor_class
         )
 
-        self._model = model_class(**self._params)
+        self._model = model_class(**self._params_wrapper.get_params())
 
-    def get_params(self) -> dict:
-        return self._params
+    @abstractmethod
+    def do_hpo(self) -> None: ...
+
+    @abstractmethod
+    def train(self) -> None: ...
+
+    @abstractmethod
+    def test(self) -> np.ndarray: ...
+
+    def set_data(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        X_val: pd.DataFrame,
+        y_val: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+    ) -> None:
+        self._X_train = X_train
+        self._y_train = y_train
+        self._X_val = X_val
+        self._y_val = y_val
+        self._X_test = X_test
+        self._y_test = y_test
+
+    # -----------------
+    #       Checks
+    # -----------------
+
+    def _assert_data_is_set(self):
+        assert self._X_train is not None
+        assert self._y_train is not None
+        assert self._X_val is not None
+        assert self._y_val is not None
+        assert self._X_test is not None
+        assert self._y_test is not None
+
+    def _assert_no_hpo_params(self, hpo_keyword: str = "tune"):
+        param_values = self._params_wrapper.get_params().values()
+        hpo_candidates = [item for item in param_values if item == hpo_keyword]
+        assert len(hpo_candidates) == 0
+
+    # -----------------
+    #       Getters
+    # -----------------
+
+    def get_params_wrapper(self) -> BaseParams:
+        return self._params_wrapper
 
     def get_task(self) -> str:
         return self._task
 
-    @abstractmethod
-    def train(self, X: Any, y: Any) -> np.ndarray: ...
+    def get_model(self) -> dict:
+        return self._model
 
-    @abstractmethod
-    def predict(self, X: Any) -> np.ndarray: ...
+    def get_data_train(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        self._assert_data_is_set()
+        return self._X_train, self._y_train
+
+    def get_data_val(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        self._assert_data_is_set()
+        return self._X_val, self._y_val
+
+    def get_data_test(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        self._assert_data_is_set()
+        return self._X_test, self._y_test
 
 
 class EBMinducer(BaseInducer):
@@ -125,10 +188,29 @@ class XGBinducer(BaseInducer):
     def param_class(self):
         return XGBParams
 
-    def train(self, X, y) -> None: ...
+    @override
+    def do_hpo(self) -> None:
+        self._assert_data_is_set()
 
-    def predict(self, X) -> np.ndarray:
-        return self._model.predict(X)
+        params_object = self.get_params_wrapper()
+        optimized_params = {}
+        for hpo_param, param_config in params_object.get_hpo_params().items():
+            optimal_value = param_config[param_config["method"]][0]
+            optimized_params.update({hpo_param: optimal_value})
+        self._params_wrapper.set_optimized_hpo_params(optimized_params)
+        self._model.set_params(**optimized_params)
+
+    @override
+    def train(self) -> None:
+        self._assert_data_is_set()
+        self._assert_no_hpo_params()
+
+        self._model.fit(self._X_train, self._y_train)
+
+    @override
+    def test(self) -> np.ndarray:
+        self._assert_data_is_set()
+        return self._model.predict(self._X_test)
 
 
 # class GamiNetInducer(BaseInducer):
