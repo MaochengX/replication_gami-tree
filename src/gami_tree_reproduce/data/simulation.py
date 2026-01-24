@@ -96,15 +96,20 @@ data_model4_c = set_y(
     covariates, "classification", model4, y_generator, y_generator_params, rng
 )
 
+def out_name(stem: str) -> str:
+    return f"{filenameprefix}_{stem}.pq" if filenameprefix else f"{stem}.pq"
 
-data_model1_c.to_parquet(DATA / "model1c.pq")
-data_model1_r.to_parquet(DATA / "model1r.pq")
 
-data_model2_c.to_parquet(DATA / "model2c.pq")
-data_model2_r.to_parquet(DATA / "model2r.pq")
-
-data_model3_c.to_parquet(DATA / "model3c.pq")
-data_model3_r.to_parquet(DATA / "model3r.pq")
-
-data_model4_c.to_parquet(DATA / "model4c.pq")
-data_model4_r.to_parquet(DATA / "model4r.pq")
+for stem, df in (
+    ("model1c", data_model1_c),
+    ("model1r", data_model1_r),
+    ("model2c", data_model2_c),
+    ("model2r", data_model2_r),
+    ("model3c", data_model3_c),
+    ("model3r", data_model3_r),
+    ("model4c", data_model4_c),
+    ("model4r", data_model4_r),
+):
+    fname = out_name(stem)
+    df.to_parquet(DATA / fname)
+    df.to_parquet(ASSET / fname)

@@ -16,7 +16,9 @@ from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
 from xgboost import XGBRegressor as XGBR
 
-from gami_tree_reproduce.model.params import EBMParams, GamiNetParams, Params, XGBParams
+from gami_tree_reproduce.model.gamitree import GamiTreeModel
+
+from gami_tree_reproduce.model.params import EBMParams, GamiNetParams, Params, XGBParams, GamiTreeParams
 
 Task = Literal["classification", "regression"]
 
@@ -161,13 +163,52 @@ class GamiNetInducer(BaseInducer):
 
     def predict(self, X) -> np.ndarray:
         return self._model.predict(X)
+    
+
+
+class GamiTreeInducer(BaseInducer):
+    @property
+    def classifier_class(self):
+        return GamiTreeModel
+
+    @property
+    def regressor_class(self):
+        return GamiTreeModel
+
+    @property
+    def param_class(self):
+        return GamiTreeParams
+
+    def __init__(self, task: Task, params_wrapper: Params):
+        if not isinstance(params_wrapper, self.param_class):
+            msg = (
+                f"{self.__class__.__name__} expects params of type {self.param_class.__name__}, "
+                f"but got {type(params_wrapper).__name__}."
+            )
+            raise TypeError(msg)
+
+        if task not in get_args(Task):
+            msg = f"Expected task to be type 'Task' but got {type(task)}"
+            raise TypeError(msg)
+
+        self._params = params_wrapper.get_params()
+        self._task = task
+
+        self._model = GamiTreeModel(task=task, **self._params)
+
+    def train(self, X, y) -> "GamiTreeInducer":
+        self._model.fit(np.asarray(X), np.asarray(y))
+        return self
+
+    def predict(self, X) -> np.ndarray:
+        return self._model.predict(np.asarray(X))
 
 
 ######################################################################################
 # for usage only access should be done via imported getter function and class registry
 ######################################################################################
 
-INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer, "gaminet": GamiNetInducer}
+INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer, "gaminet": GamiNetInducer, "gamitree": GamiTreeInducer}
 
 
 def get_inducer_class(name: str) -> callable:

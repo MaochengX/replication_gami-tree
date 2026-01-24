@@ -15,6 +15,9 @@ from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
 from xgboost import XGBRegressor as XGBR
 
+from gami_tree_reproduce.model.gamitree import GamiTreeConfig
+
+
 
 # TODO: Forward declarations for now until implemented
 class GAMITR: ...
@@ -137,8 +140,23 @@ class XGBParams(BaseParams):
 
 class GamiTreeParams(BaseParams):
     def _validate_params(self, params: dict) -> None:
-        pass
+        keys_to_check = list(params.keys())
+        expected_parameter_keys = list(GamiTreeConfig.__annotations__.keys())
 
+        conditions = [key in expected_parameter_keys for key in keys_to_check]
+        faulty_keys = [
+            key
+            for key, condition in zip(keys_to_check, conditions, strict=True)
+            if not condition
+        ]
+        if not all(conditions):
+            msg = f"Expected parameters to be in {expected_parameter_keys} but got {faulty_keys}"
+            raise ValueError(msg)
+
+    def _fill_defaults(self, params: dict) -> dict:
+        defaults = {k: getattr(GamiTreeConfig(), k) for k in GamiTreeConfig.__annotations__.keys()}
+        defaults.update(params)
+        return defaults
 
 class GamiNetParams(BaseParams):
     def _validate_params(self, params: dict) -> None:
@@ -183,7 +201,7 @@ def get_gaminet_defaults(task: str) -> dict:
     return defaults
 
 
-PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams, "gaminet": GamiNetParams}
+PARAMS_REGISTRY = {"ebm": EBMParams, "xgb": XGBParams, "gaminet": GamiNetParams, "gamitree": GamiTreeParams}
 
 
 def get_parameter_class(name: str) -> callable:

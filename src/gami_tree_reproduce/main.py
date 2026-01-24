@@ -107,7 +107,7 @@ for dataset_path in datasets_paths:
     if experiment_name[-1] == "c":
         task = "classification"
     else:
-        taks = "regression"
+        task = "regression"
 
     # get class and instantiate parameter and inducer objects
     for inducer_name in inducers_dictionary_grid:
@@ -123,7 +123,7 @@ for dataset_path in datasets_paths:
             params = get_parameter_class(inducer_name)(
                 params=current_configuration, task=task
             )
-            inducer = get_inducer_class(inducer_name)(taske=task, params_wrapper=params)
+            inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
 
             # TODO: train hpo_params (set to default in params)
             data = pd.read_parquet(dataset_path)
