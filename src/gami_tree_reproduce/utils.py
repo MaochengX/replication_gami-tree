@@ -11,7 +11,7 @@ os.environ.setdefault("PROJECT_ROOT", str(project_root))
 def get_project_paths(
     path_to_config: Path = Path(project_root / "conf" / "config.yaml"),
     create: bool = True,
-):
+) -> dict:
     config = OmegaConf.load(path_to_config)
     OmegaConf.resolve(config)
 

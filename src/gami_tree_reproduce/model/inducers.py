@@ -1,18 +1,28 @@
 from abc import ABC, abstractmethod
+from os import environ as oenv
+from pathlib import Path
 from typing import Literal, get_args
 
 import numpy as np
-import pandas as pd
-
-# from gaminet import GAMINet
+from gaminet import GAMINetClassifier as GamiNetC
+from gaminet import GAMINetRegressor as GamiNetR
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
+from omegaconf import OmegaConf
+from sklearn.metrics import log_loss, mean_squared_error
 from typing_extensions import override
 from xgboost import XGBClassifier as XGBC  # xgbs scikit learn api
 from xgboost import XGBRegressor as XGBR  # xgbs scikit learn api
 
-from gami_tree_reproduce.model.params import BaseParams, EBMParams, Params, XGBParams
+from gami_tree_reproduce.model.params import (
+    EBMParams,
+    GamiNetParams,
+    Params,
+    XGBParams,
+)
 from gami_tree_reproduce.utils import get_project_paths
+
+from .params import get_parameter_class
 
 project_paths = get_project_paths()
 
@@ -20,11 +30,7 @@ Task = Literal["classification", "regression"]
 
 
 class BaseInducer(ABC):
-    """
-    Docstring for BaseInducer
-
-    :var Args: Description
-    """
+    """ """
 
     @property
     @abstractmethod
@@ -35,12 +41,24 @@ class BaseInducer(ABC):
     def regressor_class(self): ...
 
     @property
+    def task(self) -> str:
+        return self._task
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
     @abstractmethod
     def param_class(self) -> type[Params]: ...
 
     @property
     def model(self):
         return self._model
+
+    @property
+    def params_wrapper(self):
+        return self._params_wrapper
 
     def __init__(self, task: Task, params_wrapper: Params):
         """
@@ -63,94 +81,72 @@ class BaseInducer(ABC):
 
         self._params_wrapper = params_wrapper
         self._task = task
-        self._is_trained = False
-
-        self._X_train = None
-        self._y_train = None
-        self._X_val = None
-        self._y_val = None
-        self._X_test = None
-        self._y_test = None
 
         model_class = (
             self.classifier_class if task == "classification" else self.regressor_class
         )
 
-        self._model = model_class(**self._params_wrapper.get_params())
+        self._model = model_class(**self._params_wrapper.params)
+        self.set_params(params_wrapper.params)
+
+    def hpo_pending(self) -> bool:
+        return self.params_wrapper.hpo_pending
+
+    def do_hpo(self, X_val, y_val) -> None:
+        """
+        Optimize hyperparameters stored in self._hpo_setting of parameter wrapper
+
+        Interact with parameter wrapper using mediator object handling hpo process.
+
+        Args:
+            X_val : Validationset (covariates)
+            y_val : Validationset (labels)
+        """
+        hpo_settings = self.params_wrapper.hpo_settings
+        HPOmediator.check_hpo_methods_set(hpo_settings)
+
+        hpo_result = {}
+        for hpo_param, hpo_setting in self.params_wrapper.hpo_settings.items():
+            hpo_method = hpo_setting["method"]
+            HPOmediator.check_hpo_method_registered(hpo_method)
+            hpo_value = HPOmediator.do_hpo(
+                hpo_param=hpo_param,
+                method=hpo_method,
+                hpo_setting=hpo_setting,
+                inducer=self,
+                X_val=X_val,
+                y_val=y_val,
+            )
+            hpo_result.update({hpo_param: hpo_value})
+
+        self.params.set_optimized_hpo_params(hpo_result)
+        self.params.hpo_finished()
 
     @abstractmethod
-    def do_hpo(self) -> None: ...
+    def set_params(self, param_dict: dict) -> None:
+        """
+        Set parameters for inducer object.
+
+        First validate parameters (implemented in underlying package) and set for parameter wrapper.
+        Subclasses must set parameters for the internal model since this is model/API specific.
+
+        Args:
+            param_dict (dict): Plain dictinary with parameter name as key and value.
+        """
+        self.params_wrapper._validate_params(param_dict)
+        self._params_wrapper.set_params(param_dict)
 
     @abstractmethod
-    def train(self) -> None: ...
+    def train(self, X_train, y_train) -> None: ...
 
     @abstractmethod
-    def test(self) -> np.ndarray: ...
-
-    def set_data(
-        self,
-        X_train: pd.DataFrame,
-        y_train: pd.DataFrame,
-        X_val: pd.DataFrame,
-        y_val: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-    ) -> None:
-        self._X_train = X_train
-        self._y_train = y_train
-        self._X_val = X_val
-        self._y_val = y_val
-        self._X_test = X_test
-        self._y_test = y_test
-
-    # -----------------
-    #       Checks
-    # -----------------
-
-    def _assert_data_is_set(self):
-        assert self._X_train is not None
-        assert self._y_train is not None
-        assert self._X_val is not None
-        assert self._y_val is not None
-        assert self._X_test is not None
-        assert self._y_test is not None
-
-    def _assert_no_hpo_params(self, hpo_keyword: str = "tune"):
-        param_values = self._params_wrapper.get_params().values()
-        hpo_candidates = [item for item in param_values if item == hpo_keyword]
-        assert len(hpo_candidates) == 0
-
-    # -----------------
-    #       Getters
-    # -----------------
-
-    def get_params_wrapper(self) -> BaseParams:
-        return self._params_wrapper
-
-    def get_task(self) -> str:
-        return self._task
-
-    def get_model(self) -> dict:
-        return self._model
-
-    def get_data_train(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        self._assert_data_is_set()
-        return self._X_train, self._y_train
-
-    def get_data_val(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        self._assert_data_is_set()
-        return self._X_val, self._y_val
-
-    def get_data_test(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        self._assert_data_is_set()
-        return self._X_test, self._y_test
+    def predict(self, X_new) -> np.ndarray: ...
 
 
+# =======================================================================================
+#                           Derived Inducer Classes
+# =======================================================================================
 class EBMinducer(BaseInducer):
-    """
-    Docstring for EBMinducer
-    """
-
     @property
     def classifier_class(self) -> type[EBMC]:
         return EBMC
@@ -160,22 +156,33 @@ class EBMinducer(BaseInducer):
         return EBMR
 
     @property
+    def name(self) -> str:
+        return "ebm"
+
+    @property
     def param_class(self):
         return EBMParams
 
+    @override
+    def set_params(self, param_dict):
+        super().set_params(param_dict)
+        self._model.set_params(**param_dict)
+
+    @override
     def train(self, X, y) -> None:
         self._model.fit(X, y)
-        return self
+        if self._task == "regression":
+            loss_trace = mean_squared_error(self._model.predict(X), y)
+        else:
+            loss_trace = log_loss(self._model.predict(X), y)
+        return loss_trace
 
+    @override
     def predict(self, X):
-        pass
+        self._model.predict(X)
 
 
 class XGBinducer(BaseInducer):
-    """
-    Docstring for XGBinducer
-    """
-
     @property
     def classifier_class(self) -> type[XGBC]:
         return XGBC
@@ -185,59 +192,66 @@ class XGBinducer(BaseInducer):
         return XGBR
 
     @property
+    def name(self) -> str:
+        return "xgb"
+
+    @property
     def param_class(self):
         return XGBParams
 
     @override
-    def do_hpo(self) -> None:
-        self._assert_data_is_set()
-
-        params_object = self.get_params_wrapper()
-        optimized_params = {}
-        for hpo_param, param_config in params_object.get_hpo_params().items():
-            optimal_value = param_config[param_config["method"]][0]
-            optimized_params.update({hpo_param: optimal_value})
-        self._params_wrapper.set_optimized_hpo_params(optimized_params)
-        self._model.set_params(**optimized_params)
+    def set_params(self, param_dict):
+        super().set_params(param_dict)
+        self._model.set_params(**param_dict)
 
     @override
-    def train(self) -> None:
-        self._assert_data_is_set()
-        self._assert_no_hpo_params()
-
-        self._model.fit(self._X_train, self._y_train)
+    def train(self, X_train, y_train) -> np.array:
+        self._model.fit(X_train, y_train, eval_set=[(X_train, y_train)], verbose=False)
+        loss = self._model.evals_result_["validation_0"]["logloss"]
+        return np.array(loss)
 
     @override
-    def test(self) -> np.ndarray:
+    def predict(self, X_new) -> np.ndarray:
         self._assert_data_is_set()
-        return self._model.predict(self._X_test)
+        return self._model.predict(X_new)
 
 
-# class GamiNetInducer(BaseInducer):
-#     """ "
-#     Docstring
-#     """
+class GamiNetInducer(BaseInducer):
+    @property
+    def name(self) -> str:
+        return "gaminet"
 
-#     @property
-#     def classifier_class(self) -> type[GAMINet]:
-#         return GAMINet
+    @property
+    def classifier_class(self) -> type[GamiNetC]:
+        return GamiNetC
 
-#     @property
-#     def regressor_class(self) -> type[GAMINet]:
-#         return GAMINet
+    @property
+    def regressor_class(self) -> type[GamiNetR]:
+        return GamiNetR
 
-#     @property
-#     def param_class(self):
-#         return GamiNetParams
+    @property
+    def param_class(self):
+        return GamiNetParams
 
-#     def train(self, X, y) -> None:
-#         self._model.fit(X, y)
+    @override
+    def set_params(self, param_dict):
+        super().set_params(param_dict)
+        self._model.set_params(**param_dict)
 
-#     def predict(self, X) -> np.ndarray:
-#         return self._model.predict(X)
+    @override
+    def train(self, X, y) -> None:
+        self._model.fit(X, y)
+
+    @override
+    def predict(self, X) -> np.ndarray:
+        return self._model.predict(X)
 
 
-INDUCER_REGISTRY = {"ebm": EBMinducer, "xgb": XGBinducer}
+INDUCER_REGISTRY = {
+    "ebm": EBMinducer,
+    "xgb": XGBinducer,
+    "gaminet": GamiNetInducer,
+}
 
 
 def get_inducer_class(name: str) -> callable:
@@ -247,3 +261,103 @@ def get_inducer_class(name: str) -> callable:
         raise KeyError(msg)
 
     return INDUCER_REGISTRY[key]
+
+
+# =======================================================================================
+#                           HPO management
+# =======================================================================================
+
+
+conf = OmegaConf.load(Path(oenv["PROJECT_ROOT"], "conf", "config.yaml"))
+rng = np.random.default_rng(conf.seed)
+
+
+class HPOmediator(ABC):
+    @abstractmethod
+    def check_hpo_methods_set(hpo_settings: dict):
+        for hpo_param, hpo_setting in hpo_settings.items():
+            if "method" not in hpo_setting:
+                msg = f"Expected 'method: <sth>' enty for hpo parameter '{hpo_param}'"
+                raise KeyError(msg)
+
+    @abstractmethod
+    def check_hpo_method_registered(method_name: str):
+        if method_name not in HPO_METHOD_REGISTRY:
+            msg = f"Method '{method_name}' is not implemented and/or registered in method registry"
+            raise KeyError(msg)
+
+    @abstractmethod
+    def do_grid_search(
+        hpo_param: str, grid: list, inducer, X_val: np.array, y_val: np.array
+    ):
+        configurations = {}
+        inducer_name = inducer.name
+        task = inducer.task
+        default_params = inducer.params_wrapper.params
+        best_loss = float("inf")
+        for candidate_value in grid:
+            new_params = default_params.update({hpo_param: candidate_value})
+            candidate_params_wrapper = get_parameter_class(inducer_name)(
+                params=new_params, task=task
+            )
+            candidate_inducer = get_inducer_class(inducer_name)(
+                task=task, params_wrapper=candidate_params_wrapper
+            )
+            candidate_inducer.set_params({hpo_param: candidate_value})
+            loss_trace = candidate_inducer.train(X_val, y_val)
+            if isinstance(
+                loss_trace, float | int
+            ):  # if no trace but just final loss provided
+                current_loss = loss_trace
+            else:
+                current_loss = loss_trace[-1]
+            configurations.update({candidate_value: current_loss})
+            if current_loss < best_loss:
+                best_loss = current_loss
+                best_value = candidate_value
+
+        return (best_value, configurations)
+
+    @abstractmethod
+    def do_random_search(
+        hpo_param,
+        distribution: np.random.Generator,
+        params: dict,
+        inducer,
+        X_val,
+        y_val,
+    ):
+        random_grid = distribution(**params)
+        return HPOmediator.do_grid_search(hpo_param, random_grid, inducer, X_val, y_val)
+
+    @abstractmethod
+    def do_hpo(hpo_param: str, method: str, hpo_setting: dict, inducer, X_val, y_val):
+        if method == "random":
+            if "distribution" not in hpo_setting:
+                msg = "For method 'random' expected 'distribution' keyword that matches numpy generator."
+                raise KeyError(msg)
+            if not hasattr(rng, distribution := hpo_setting["distribution"]):
+                msg = f"Numpy rng hast no implementation of desired distibution {distribution}"
+                raise KeyError(msg)
+            if "params" not in hpo_setting:
+                msg = f"Expected 'params' key to initialize distribution {hpo_setting['distribution']}"
+                raise KeyError(msg)
+
+            distribution = getattr(rng, hpo_setting["distribution"])
+            params = hpo_setting["params"]
+            hpo_result = HPOmediator.do_random_search(
+                hpo_param, distribution, params, inducer, X_val, y_val
+            )
+        elif method == "grid":
+            hpo_result = HPOmediator.do_grid_search(
+                hpo_param, hpo_setting["grid"], inducer, X_val, y_val
+            )
+        else:
+            raise KeyError
+        return hpo_result
+
+
+HPO_METHOD_REGISTRY = {
+    "grid": HPOmediator.do_grid_search,
+    "random": HPOmediator.do_random_search,
+}

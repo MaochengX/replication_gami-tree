@@ -16,6 +16,7 @@ project_paths = get_project_paths()
 
 cfg = yaml_to_omegaconf(project_paths["conf_data_simulation"])
 data_path = project_paths["data_raw"]
+sim_conf_path = project_paths["assets_conf_data"]
 
 config_grid = config_to_grid(cfg)
 for simulation_id, data_dict in enumerate(config_grid):
@@ -29,8 +30,7 @@ for simulation_id, data_dict in enumerate(config_grid):
 
     # Save metadata
     with Path.open(
-        project_paths["assets_conf_simdata"]
-        / Path(f"sim{simulation_id + 1}").with_suffix(".yaml"),
+        sim_conf_path / Path(f"sim{simulation_id + 1}").with_suffix(".yaml"),
         "w",
     ) as metafile:
         yaml.dump(data_dict, metafile)

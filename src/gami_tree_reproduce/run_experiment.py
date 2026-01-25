@@ -1,15 +1,22 @@
 from os import environ as oenv
+
+import pandas as pd
+
+oenv["MPLBACKEND"] = "Agg"
 from pathlib import Path
 
 from omegaconf import OmegaConf
 
-from gami_tree_reproduce.data.preprocess import (
+from gami_tree_reproduce.data.preprocess_utils import (
     assert_preprocess_data_available,
     get_train_val_test,
 )
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
-from gami_tree_reproduce.utils import config_to_grid, get_project_paths
+from gami_tree_reproduce.utils import (
+    config_to_grid,
+    get_project_paths,
+)
 
 project_paths = get_project_paths()
 config = Path(oenv["PROJECT_ROOT"])
@@ -42,7 +49,7 @@ def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
 
 
 preprocessed_folder = assert_preprocess_data_available()
-
+assert_preprocess_data_available()
 
 dataset_folders = [path for path in preprocessed_folder.glob("*") if path.is_dir()]
 configs_inducer = list(Path(project_paths["conf_inducer"]).glob("*.yaml"))
@@ -59,20 +66,24 @@ for dataset_folder in dataset_folders:
         taks = "regression"
 
     # get class and instantiate parameter and inducer objects
-    # for inducer_name in inducers_dictionary_grid:
-    inducer_name = "xgb"
-    configurations = inducers_dictionary_grid[inducer_name]
-    for _, current_configuration in enumerate(configurations):
-        params = get_parameter_class(inducer_name)(
-            params=current_configuration, task=task
-        )
+    for inducer_name in inducers_dictionary_grid:
+        if inducer_name != "ebm":
+            continue
+        configurations = inducers_dictionary_grid[inducer_name]
+        for _, current_configuration in enumerate(configurations):
+            params = get_parameter_class(inducer_name)(
+                params=current_configuration, task=task
+            )
 
-        inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
-        # data = pd.read_parquet(dataset_path)
-        (X_train, y_train), (X_val, y_val), (X_test, y_test) = get_train_val_test(
-            dataset_name
-        )
-        inducer.set_data(X_train, y_train, X_val, y_val, X_test, y_test)
-        inducer.do_hpo()
-        inducer.train()
-        prediction = inducer.test()
+            inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
+            #  data = pd.read_parquet(dataset_path)
+            (X_train, y_train), (X_val, y_val), (X_test, y_test) = get_train_val_test(
+                dataset_name
+            )
+            if inducer.hpo_pending():
+                hpo_config = inducer.do_hpo(X_val, y_val)
+            else:
+                X_train = pd.concat([X_train, X_val])
+                y_train = pd.concat([y_train, y_val])
+            inducer.train(X_train, y_train)
+            test_err = inducer.predict(X_test)

@@ -1,12 +1,19 @@
 import math
+import os
 from pathlib import Path
 
+import matplotlib as mpl
 import pandas as pd
+
+mpl.use("Agg")
+os.environ["MPLBACKEND"] = "Agg"
+
 from matplotlib import pyplot as plt
 
 from gami_tree_reproduce.utils import get_project_paths
 
 project_paths = get_project_paths()
+plots_assets_path = project_paths["assets_plots_data"]
 
 
 def get_plt_grid(len_objects: int, n_cols: int = 3, figsize=(12, 8)):
@@ -61,7 +68,7 @@ def plot_response(
 def save_fig(
     fig: plt.figure,
     filename: str,
-    destination_folder: Path = project_paths["assets_plots"],
+    destination_folder: Path = plots_assets_path,
     save_kwargs=None,
 ) -> None:
     if save_kwargs is None:
