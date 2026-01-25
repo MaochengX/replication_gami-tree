@@ -1,4 +1,9 @@
-project_root: ${oc.env:PROJECT_ROOT} #assume env. variable project_root set before!
+seed: 123
+test_size: 0.2
+val_size: 0.1
+
+
+project_root: ${oc.env:PROJECT_ROOT} #assume env. variable project_root set before
 
 paths:
   folder:
@@ -6,18 +11,13 @@ paths:
     data_raw: ${paths.folder.data}/raw
     data_preprocessed: ${paths.folder.data}/preprocessed
     assets: ${project_root}/assets
-    assets_plots: ${paths.folder.assets}/plots
+    assets_plots_data: ${paths.folder.assets}/plots/data
     assets_conf: ${paths.folder.assets}/conf
     assets_conf_experiments: ${paths.folder.assets_conf}/experiments
-    assets_conf_simdata: ${paths.folder.assets_conf}/sim
+    assets_conf_data: ${paths.folder.assets_conf}/data
     conf: ${project_root}/conf
     conf_inducer: ${paths.folder.conf}/inducer
 
   file:
     conf_data_openml: ${paths.folder.conf}/data/openml.yaml
     conf_data_simulation: ${paths.folder.conf}/data/simulation.yaml
-
-
-seed: 123
-test_size: 0.2
-val_size: 0.1
