@@ -11,6 +11,7 @@ from gami_tree_reproduce.data.preprocess_utils import (
     assert_preprocess_data_available,
     get_train_val_test,
 )
+from gami_tree_reproduce.log import ExperimentMediator
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
 from gami_tree_reproduce.utils import (
@@ -59,31 +60,42 @@ inducers_dictionary_grid = get_inducer_dictionary_grid(configs_inducer)
 for dataset_folder in dataset_folders:
     # dataset names are stores as parquet files and end in 'c' or 'r' for categorization/regression tasks
     dataset_name = dataset_folder.stem
-    experiment_name = dataset_name
-    if experiment_name[-1] == "c":
+    if dataset_name[-1] == "c":
         task = "classification"
     else:
         taks = "regression"
 
-    # get class and instantiate parameter and inducer objects
     for inducer_name in inducers_dictionary_grid:
         if inducer_name != "ebm":
             continue
+
         configurations = inducers_dictionary_grid[inducer_name]
-        for _, current_configuration in enumerate(configurations):
+        for experiment_count, current_configuration in enumerate(configurations):
+            # location for results
+            path_results = Path(
+                project_paths["assets_conf_experiments"],
+                dataset_name
+                + "_"
+                + inducer_name
+                + "_experiment"
+                + str(experiment_count + 1),
+            )
+
             params = get_parameter_class(inducer_name)(
                 params=current_configuration, task=task
             )
 
             inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
-            #  data = pd.read_parquet(dataset_path)
             (X_train, y_train), (X_val, y_val), (X_test, y_test) = get_train_val_test(
                 dataset_name
             )
             if inducer.hpo_pending():
-                hpo_config = inducer.do_hpo(X_val, y_val)
+                hpo_configs = inducer.do_hpo(X_val, y_val)
             else:
                 X_train = pd.concat([X_train, X_val])
                 y_train = pd.concat([y_train, y_val])
-            inducer.train(X_train, y_train)
-            test_err = inducer.predict(X_test)
+
+            log = ExperimentMediator()
+            log.train(inducer, X_train, y_train)
+            log.predict(inducer, X_test, y_test)
+            log.log(path_results, inducer)
