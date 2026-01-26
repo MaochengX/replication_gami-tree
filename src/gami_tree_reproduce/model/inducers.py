@@ -87,12 +87,11 @@ class BaseInducer(ABC):
         )
 
         self._model = model_class(**self._params_wrapper.params)
-        self.set_params(params_wrapper.params)
 
     def hpo_pending(self) -> bool:
         return self.params_wrapper.hpo_pending
 
-    def do_hpo(self, X_val, y_val) -> None:
+    def do_hpo(self, X_val, y_val) -> dict:
         """
         Optimize hyperparameters stored in self._hpo_setting of parameter wrapper
 
@@ -105,11 +104,12 @@ class BaseInducer(ABC):
         hpo_settings = self.params_wrapper.hpo_settings
         HPOmediator.check_hpo_methods_set(hpo_settings)
 
-        hpo_result = {}
+        hpo_conf = {}
+        hpo_runs = {}
         for hpo_param, hpo_setting in self.params_wrapper.hpo_settings.items():
             hpo_method = hpo_setting["method"]
             HPOmediator.check_hpo_method_registered(hpo_method)
-            hpo_value = HPOmediator.do_hpo(
+            hpo_result, hpo_config = HPOmediator.do_hpo(
                 hpo_param=hpo_param,
                 method=hpo_method,
                 hpo_setting=hpo_setting,
@@ -117,13 +117,16 @@ class BaseInducer(ABC):
                 X_val=X_val,
                 y_val=y_val,
             )
-            hpo_result.update({hpo_param: hpo_value})
+            hpo_conf.update({hpo_param: hpo_result})
+            hpo_runs[hpo_param] = hpo_config
 
-        self.params.set_optimized_hpo_params(hpo_result)
-        self.params.hpo_finished()
+        self.set_params_inducer(hpo_conf)
+        self.params_wrapper._hpo_pending = False
+
+        return hpo_runs
 
     @abstractmethod
-    def set_params(self, param_dict: dict) -> None:
+    def set_params_inducer(self, param_dict: dict) -> None:
         """
         Set parameters for inducer object.
 
@@ -134,10 +137,10 @@ class BaseInducer(ABC):
             param_dict (dict): Plain dictinary with parameter name as key and value.
         """
         self.params_wrapper._validate_params(param_dict)
-        self._params_wrapper.set_params(param_dict)
+        self.params_wrapper.set_params(param_dict)
 
     @abstractmethod
-    def train(self, X_train, y_train) -> None: ...
+    def train(self, X_train, y_train) -> np.ndarray: ...
 
     @abstractmethod
     def predict(self, X_new) -> np.ndarray: ...
@@ -164,12 +167,12 @@ class EBMinducer(BaseInducer):
         return EBMParams
 
     @override
-    def set_params(self, param_dict):
-        super().set_params(param_dict)
+    def set_params_inducer(self, param_dict):
+        super().set_params_inducer(param_dict)
         self._model.set_params(**param_dict)
 
     @override
-    def train(self, X, y) -> None:
+    def train(self, X, y) -> np.ndarray:
         self._model.fit(X, y)
         if self._task == "regression":
             loss_trace = mean_squared_error(self._model.predict(X), y)
@@ -179,7 +182,7 @@ class EBMinducer(BaseInducer):
 
     @override
     def predict(self, X):
-        self._model.predict(X)
+        return self._model.predict(X)
 
 
 class XGBinducer(BaseInducer):
@@ -200,8 +203,8 @@ class XGBinducer(BaseInducer):
         return XGBParams
 
     @override
-    def set_params(self, param_dict):
-        super().set_params(param_dict)
+    def set_params_inducer(self, param_dict):
+        super().set_params_inducer(param_dict)
         self._model.set_params(**param_dict)
 
     @override
@@ -212,7 +215,6 @@ class XGBinducer(BaseInducer):
 
     @override
     def predict(self, X_new) -> np.ndarray:
-        self._assert_data_is_set()
         return self._model.predict(X_new)
 
 
@@ -234,8 +236,8 @@ class GamiNetInducer(BaseInducer):
         return GamiNetParams
 
     @override
-    def set_params(self, param_dict):
-        super().set_params(param_dict)
+    def set_params_inducer(self, param_dict):
+        super().set_params_inducer(param_dict)
         self._model.set_params(**param_dict)
 
     @override
@@ -303,7 +305,7 @@ class HPOmediator(ABC):
             candidate_inducer = get_inducer_class(inducer_name)(
                 task=task, params_wrapper=candidate_params_wrapper
             )
-            candidate_inducer.set_params({hpo_param: candidate_value})
+            candidate_inducer.set_params_inducer({hpo_param: candidate_value})
             loss_trace = candidate_inducer.train(X_val, y_val)
             if isinstance(
                 loss_trace, float | int

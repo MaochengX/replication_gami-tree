@@ -47,31 +47,21 @@ class BaseParams(ABC):
             self._hpo_pending = True
 
         self._validate_params(params.copy())
-        default_params = self._fill_default_params(params.copy())
-        self.set_params(default_params)
+        default_params = self._get_default_params(params.copy())
+        self._params = default_params
 
     @abstractmethod
     def _validate_params(self, params: dict): ...
 
     @abstractmethod
-    def _fill_default_params(self, params: dict): ...
+    def _get_default_params(self, params: dict): ...
 
     # ---------------------------------------------------------------------------------------
     #                                       API
     # ---------------------------------------------------------------------------------------
-    def set_optimized_hpo_params(self, optimal_configuration: dict) -> None:
-        """
-        To be called from Inducer which does actual hpo routine
-        """
-        for param, optimal_value in optimal_configuration.items():
-            self._params[param] = optimal_value
-
-    def set_params(self, param_dict: dict) -> None:
+    def set_params(self, param_dict) -> None:
         self._validate_params(param_dict)
-        if hasattr(self, "_params"):
-            self._params.update(param_dict)
-        else:
-            self._params = param_dict
+        self._params.update(param_dict)
 
     @property
     def hpo_settings(self) -> dict:
@@ -110,7 +100,7 @@ class EBMParams(BaseParams):
             expected_parameter_keys = list(EBMC().get_params().keys())
         compare_param_dict(params_user, expected_parameter_keys, hpo_keyword)
 
-    def _fill_default_params(self, params_user: dict, hpo_keyword="tune") -> None:
+    def _get_default_params(self, params_user: dict, hpo_keyword="tune") -> None:
         """
         Fill parameter dictionary with package specific defaults if not given by user in params_user dictionary.
         HPO parameters are also overwritten with internal defaults.
@@ -150,7 +140,7 @@ class XGBParams(BaseParams):
             expected_parameter_keys = list(XGBC().get_params().keys())
         compare_param_dict(params_user, expected_parameter_keys, hpo_keyword)
 
-    def _fill_default_params(self, params_user: dict, hpo_keyword="tune") -> None:
+    def _get_default_params(self, params_user: dict, hpo_keyword="tune") -> None:
         """
         Fill parameter dictionary with package specific defaults if not given by user in params_user dictionary.
         HPO parameters are also overwritten with internal defaults.
@@ -190,9 +180,7 @@ class GamiNetParams(BaseParams):
             expected_parameter_keys = list(GamiNetC().get_params().keys())
         compare_param_dict(params_user, expected_parameter_keys, hpo_keyword)
 
-    def _fill_default_params(
-        self, params_user: dict, hpo_keyword: str = "tune"
-    ) -> None:
+    def _get_default_params(self, params_user: dict, hpo_keyword: str = "tune") -> None:
         """
         Fill parameter dictionary with package specific defaults if not given by user in params_user dictionary.
         HPO parameters are also overwritten with internal defaults.
