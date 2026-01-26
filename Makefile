@@ -30,21 +30,17 @@ create_openml_data:
 clear_data:
 	@rm -rf data
 	@echo "🧹 cleared data/"
-ifeq ($(all), 1)
-	@rm -rf assets/plots/data
-	@rm -rf assets/conf/data
-	@echo "🧹 cleared assets/plots/data"
-	@echo "🧹 cleared assets/conf/data"
-endif
 
-run_experiment:
+
+.PHONY: run_experiments
+run_experiments:
 	$(PYTHON) src/gami_tree_reproduce/main.py
 	@echo "🧪 experiment simulations finished"
 	@echo "	  - configuration settings written into assets folder"
 
-clear_experiment:
-	@rm assets/simulation_runs -rf
-	@echo "🧹 remove assets/simulation_runs/"
+clear_experiments:
+	@rm assets/conf/experiments -rf
+	@echo "🧹 remove assets/experiments/"
 
 # Alias:
 clear: clean
