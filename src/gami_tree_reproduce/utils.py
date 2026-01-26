@@ -11,7 +11,7 @@ os.environ.setdefault("PROJECT_ROOT", str(project_root))
 def get_project_paths(
     path_to_config: Path = Path(project_root / "conf" / "config.yaml"),
     create: bool = True,
-):
+) -> dict:
     config = OmegaConf.load(path_to_config)
     OmegaConf.resolve(config)
 
@@ -30,7 +30,7 @@ def get_project_paths(
     return paths
 
 
-def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
+def config_to_grid(cfg_params: OmegaConf, hpo_keyword: str = "tune") -> list[dict]:
     """
     Create a list of all possible parameter configurations.
 
@@ -51,17 +51,39 @@ def config_to_grid(cfg_params: OmegaConf, no_combo="tune") -> list[dict]:
         cfg_params = OmegaConf.to_container(cfg_params)
 
     # tunable hyperparameters are just added in the end to each combination
-    hyperparameter_dict = {}
-    if no_combo in cfg_params:
-        hyperparameter_dict = dict.fromkeys(cfg_params[no_combo], no_combo)
+    hpo_dict = {}
+    if hpo_keyword in cfg_params:
+        hpo_dict = {hpo_keyword: cfg_params[hpo_keyword]}
         cfg_params.pop("tune")
+
     param_grid = {
         k: [v] if not isinstance(v, list) else v for k, v in cfg_params.items()
-    }  # convert to list (iterable) with possibly single element
-    # create the actual grid ad add hyperaprameters
+    }
     param_grid = [
         dict(zip(param_grid.keys(), combination, strict=True))
         for combination in product(*param_grid.values())
     ]
 
-    return [{**d, **hyperparameter_dict} for d in param_grid]
+    return [{**d, **hpo_dict} for d in param_grid]
+
+
+def add_list_to_grid(key_name: str, value_list: list, grid: list[dict]) -> list[dict]:
+    """
+    Expand Cartesian Product Dictionary with  new single-key many-value combinations.
+
+    Args:
+        key_name (str): key name of dictionary entry to be added
+        value_list (list): values of dictionary entries to be added
+        grid (list[dict]): the original grid that should be expanded
+
+    Returns:
+        list[dict]: a new list of dictionaries taking the cartesian product over value_list
+
+    Example:
+        > add_list_to_key("data", ["s1", "s2"], [{"max_depth": 3, "size":100}, {"max_depth":3, "size":200"}])
+        > [{"max_depth": 3, "size":100, "data":"s1"},
+            {"max_depth": 3, "size":100, "data":"s2"},
+            {"max_depth":3, "size":200", "data": "s1"},
+            {"max_depth":3, "size":200", "data": "s2}]
+    """
+    return [{**config, f"{key_name}": value} for config in grid for value in value_list]

@@ -1,5 +1,19 @@
-parameters:
-  interact_pairs: [45, 60]
-  tune:
-    - max_bins
-    - max_interact
+interactions: [45, 60]
+tune:
+  max_bins:
+    method: random
+    distribution: integers
+    params:
+      low: 992
+      high: 1066
+      size: 12
+  max_interaction_bins:
+    method: random
+    distribution: integers
+    params:
+      low: 52
+      high: 76
+      size: 12
+  learning_rate:
+    method: grid
+    grid: [0.0025, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2]

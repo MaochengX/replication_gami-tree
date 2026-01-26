@@ -1,4 +1,8 @@
-parameters:
-  tune:
-    - max_depth
-    - learning_rate
+# requires paython package api conventions
+tune:
+  max_depth:
+    method: grid
+    grid: [1, 4, 8, 10, 15]
+  learning_rate:
+    method: grid
+    grid: [0.01, 0.05, 0.1, 0.2]

@@ -3,13 +3,19 @@ PYTHON := $(VENV)/bin/python
 
 .PHONY: create_sim_data
 create_sim_data:
-	$(PYTHON) src/gami_tree_reproduce/data/simulation.py
-	@echo "🚀 data simulation completed"
+	@$(PYTHON) src/gami_tree_reproduce/data/simulation.py
+	@echo "🚀 data simulation completed and written into data folder"
 
-.PHONY: create_plots_sim
-create_plots_sim:
-	$(PYTHON) src/gami_tree_reproduce/plot/plot_simulation.py
-	@echo "📊 simulation data plots created"
+.PHONY: preprocess_sim_data
+preprocess_sim_data:
+	@$(PYTHON) src/gami_tree_reproduce/data/preprocess.py
+	@echo "🚀 generated preprocessed data in data/preprocesses"
+
+
+.PHONY: create_plots_sim_data
+create_plots_sim_data:
+	@$(PYTHON) src/gami_tree_reproduce/plot/plot_simulation.py
+	@echo "📊 simulation data plots created and written into assets folder"
 
 .PHONY: show_plots
 show_plots:
@@ -17,30 +23,24 @@ show_plots:
 
 .PHONY: create_openml_data
 create_openml_data:
-	$(PYTHON) src/gami_tree_reproduce/data/data_openml.py
-	@echo "🚀 downloaded data from openml"
+	@$(PYTHON) src/gami_tree_reproduce/data/data_openml.py
+	@echo "🚀 downloaded data from openml and written into data folder"
 
 .PHONY: clear_data
 clear_data:
 	@rm -rf data
-	@rm -rf assets/conf/sim
-	@rm -rf assets/plots/data
-	@mkdir data
-	@mkdir assets/conf/sim
-	@mkdir assets/plots/data
 	@echo "🧹 cleared data/"
-	@echo "🧹 cleared assets/conf/sim"
-	@echo "🧹 cleared assets/conf/data"
 
 
-
-run_simulation:
+.PHONY: run_experiments
+run_experiments:
 	$(PYTHON) src/gami_tree_reproduce/main.py
-	@echo "🧪 simulation experiment finished"
+	@echo "🧪 experiment simulations finished"
+	@echo "	  - configuration settings written into assets folder"
 
-clear_runs:
-	@rm assets/simulation_runs -rf
-	@echo "🧹 remove assets/simulation_runs/"
+clear_experiments:
+	@rm assets/conf/experiments -rf
+	@echo "🧹 remove assets/experiments/"
 
 # Alias:
 clear: clean
