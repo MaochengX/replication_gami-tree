@@ -1,6 +1,6 @@
 seed: 123
-test_size: 0.2
-val_size: 0.1
+test_size: 0.25
+val_size: 0.25
 
 
 project_root: ${oc.env:PROJECT_ROOT} #assume env. variable project_root set before
