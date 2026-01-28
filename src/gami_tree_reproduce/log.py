@@ -52,16 +52,19 @@ class ExperimentMediator:
         self._loss_test = loss_test
 
     def log(self, destination_folder: Path, inducer) -> None:
+        destination_folder.mkdir(exist_ok=True, parents=True)
+
         total_config = {}
         total_config.update(
             {"loss_train": self._loss_train, "loss_test": self._loss_test}
         )
         total_config.update({"hpo_settings": inducer.params_wrapper.hpo_settings})
         total_config.update({"params": inducer.params_wrapper.params})
-
+        total_config.update(
+            {"time_train": self._time_train, "time_predict": self._time_predict}
+        )
         with Path(destination_folder, "results.yaml").open("w") as f:
             total_config = npnum_to_pynum(total_config)
             yaml.safe_dump(total_config, f)
 
-        with Path(destination_folder, "model.gz").open("w") as f:
-            joblib.dump(inducer, f)
+        joblib.dump(inducer, Path(destination_folder, "model.gz"))
