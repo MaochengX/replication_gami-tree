@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Literal, get_args
 
 import numpy as np
-from gaminet import GAMINetClassifier as GamiNetC
-from gaminet import GAMINetRegressor as GamiNetR
+import pandas as pd
+from gaminet.api import GAMINetClassifier, GAMINetRegressor
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from omegaconf import OmegaConf
@@ -20,12 +20,12 @@ from gami_tree_reproduce.model.params import (
     Params,
     XGBParams,
 )
-from gami_tree_reproduce.utils import get_project_paths
+from gami_tree_reproduce.utils import get_project_paths, get_seed
 
 from .params import get_parameter_class
 
 project_paths = get_project_paths()
-
+seed = get_seed()
 Task = Literal["classification", "regression"]
 
 
@@ -85,7 +85,6 @@ class BaseInducer(ABC):
         model_class = (
             self.classifier_class if task == "classification" else self.regressor_class
         )
-
         self._model = model_class(**self._params_wrapper.params)
 
     def hpo_pending(self) -> bool:
@@ -175,10 +174,10 @@ class EBMinducer(BaseInducer):
     def train(self, X, y) -> np.ndarray:
         self._model.fit(X, y)
         if self._task == "regression":
-            loss_trace = mean_squared_error(self._model.predict(X), y)
+            loss = mean_squared_error(self._model.predict(X), y)
         else:
-            loss_trace = log_loss(self._model.predict(X), y)
-        return loss_trace
+            loss = log_loss(self._model.predict(X), y)
+        return loss
 
     @override
     def predict(self, X):
@@ -210,8 +209,11 @@ class XGBinducer(BaseInducer):
     @override
     def train(self, X_train, y_train) -> np.array:
         self._model.fit(X_train, y_train, eval_set=[(X_train, y_train)], verbose=False)
-        loss = self._model.evals_result_["validation_0"]["logloss"]
-        return np.array(loss)
+        if self.task == "regression":
+            loss = self._model.evals_result()["validation_0"]["rmse"][-1]
+        else:
+            loss = self._model.evals_result()["validation_0"]["logloss"][-1]
+        return loss
 
     @override
     def predict(self, X_new) -> np.ndarray:
@@ -224,12 +226,12 @@ class GamiNetInducer(BaseInducer):
         return "gaminet"
 
     @property
-    def classifier_class(self) -> type[GamiNetC]:
-        return GamiNetC
+    def classifier_class(self) -> type[GAMINetClassifier]:
+        return GAMINetClassifier
 
     @property
-    def regressor_class(self) -> type[GamiNetR]:
-        return GamiNetR
+    def regressor_class(self) -> type[GAMINetRegressor]:
+        return GAMINetRegressor
 
     @property
     def param_class(self):
@@ -241,8 +243,8 @@ class GamiNetInducer(BaseInducer):
         self._model.set_params(**param_dict)
 
     @override
-    def train(self, X, y) -> None:
-        self._model.fit(X, y)
+    def train(self, X_train: pd.DataFrame, y_train: pd.DataFrame | pd.Series) -> None:
+        self._model.fit(X_train, y_train)
 
     @override
     def predict(self, X) -> np.ndarray:
