@@ -8,8 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal, TypeVar, get_args
 
-from gaminet import GAMINetClassifier as GamiNetC
-from gaminet import GAMINetRegressor as GamiNetR
+from gaminet.api import GAMINetClassifier, GAMINetRegressor
 from interpret.glassbox import ExplainableBoostingClassifier as EBMC
 from interpret.glassbox import ExplainableBoostingRegressor as EBMR
 from xgboost import XGBClassifier as XGBC
@@ -173,11 +172,11 @@ class GamiNetParams(BaseParams):
             params_user (dict): Dictionary of parameter value pairs as give by user. HPO params have special value.
             hpo_keyword (str, optional): Key name for HPO params in params_user. Defaults to "tune".
         """
+        if self._task == "classification":
+            expected_parameter_keys = GAMINetClassifier().get_params()
+        elif self._task == "regression":
+            expected_parameter_keys = GAMINetRegressor().get_params()
 
-        if self._task == "regression":
-            expected_parameter_keys = list(GamiNetR().get_params().keys())
-        elif self._task == "classification":
-            expected_parameter_keys = list(GamiNetC().get_params().keys())
         compare_param_dict(params_user, expected_parameter_keys, hpo_keyword)
 
     def _get_default_params(self, params_user: dict, hpo_keyword: str = "tune") -> None:
@@ -189,11 +188,10 @@ class GamiNetParams(BaseParams):
             params_user (dict): Dictionary of parameter_name value paris given by user. HPO params have special values
             hpo_keyword (str, optional): Key name for HPO params in params_user. Defaults to "tune".
         """
-
         if self._task == "classification":
-            params_defaults = EBMC().get_params()
+            params_defaults = GAMINetClassifier().get_params()
         elif self._task == "regression":
-            params_defaults = EBMR().get_params()
+            params_defaults = GAMINetRegressor().get_params()
         hpo_defaults = pop_hpo_with_default(params_user, params_defaults, hpo_keyword)
         # update internal default with hpo defaults or user defaults
         params_defaults.update(hpo_defaults)

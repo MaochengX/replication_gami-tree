@@ -38,9 +38,9 @@ run_experiments:
 	@echo "🧪 experiment simulations finished"
 	@echo "	  - configuration settings written into assets folder"
 
-clear_experiments:
-	@rm assets/conf/experiments -rf
-	@echo "🧹 remove assets/experiments/"
+clear_assets:
+	@rm assets -rf
+	@echo "🧹 remove assets"
 
 # Alias:
 clear: clean

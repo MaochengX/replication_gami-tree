@@ -1,6 +1,6 @@
 from os import environ as oenv
 
-import pandas as pd
+import numpy as np
 
 oenv["MPLBACKEND"] = "Agg"
 from pathlib import Path
@@ -11,13 +11,10 @@ from gami_tree_reproduce.data.preprocess_utils import (
     assert_preprocess_data_available,
     get_train_val_test,
 )
-from gami_tree_reproduce.log import ExperimentMediator
+from gami_tree_reproduce.log import LogMediator
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
-from gami_tree_reproduce.utils import (
-    config_to_grid,
-    get_project_paths,
-)
+from gami_tree_reproduce.utils import config_to_grid, get_project_paths
 
 project_paths = get_project_paths()
 config = Path(oenv["PROJECT_ROOT"])
@@ -60,13 +57,15 @@ inducers_dictionary_grid = get_inducer_dictionary_grid(configs_inducer)
 for dataset_folder in dataset_folders:
     # dataset names are stores as parquet files and end in 'c' or 'r' for categorization/regression tasks
     dataset_name = dataset_folder.stem
+    task = None
     if dataset_name[-1] == "c":
         task = "classification"
+        continue
     else:
-        taks = "regression"
+        task = "regression"
 
     for inducer_name in inducers_dictionary_grid:
-        if inducer_name != "ebm":
+        if inducer_name != "gaminet":
             continue
 
         configurations = inducers_dictionary_grid[inducer_name]
@@ -77,25 +76,25 @@ for dataset_folder in dataset_folders:
                 dataset_name
                 + "_"
                 + inducer_name
-                + "_experiment"
+                + "_config"
                 + str(experiment_count + 1),
             )
-
-            params = get_parameter_class(inducer_name)(
-                params=current_configuration, task=task
-            )
-
-            inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
             (X_train, y_train), (X_val, y_val), (X_test, y_test) = get_train_val_test(
                 dataset_name
             )
-            if inducer.hpo_pending():
-                hpo_configs = inducer.do_hpo(X_val, y_val)
-            else:
-                X_train = pd.concat([X_train, X_val])
-                y_train = pd.concat([y_train, y_val])
+            params = get_parameter_class(inducer_name)(
+                params=current_configuration, task=task
+            )
+            inducer = get_inducer_class(inducer_name)(task=task, params_wrapper=params)
 
-            log = ExperimentMediator()
+            log = LogMediator()
+
+            if inducer.hpo_pending():
+                log.do_hpo(inducer, X_val, y_val)
+            else:
+                X_train = np.vstack([X_train, X_val])
+                y_train = np.concatenate([y_train, y_val])
+
             log.train(inducer, X_train, y_train)
             log.predict(inducer, X_test, y_test)
             log.log(path_results, inducer)
