@@ -2,7 +2,11 @@ import os
 from itertools import product
 from pathlib import Path
 
+import pandas as pd
+import yaml
 from omegaconf import DictConfig, OmegaConf
+from pandas.api.types import is_numeric_dtype
+from sklearn.preprocessing import MinMaxScaler
 
 project_root = Path(__file__).resolve().parents[2]
 os.environ.setdefault("PROJECT_ROOT", str(project_root))
@@ -87,3 +91,56 @@ def add_list_to_grid(key_name: str, value_list: list, grid: list[dict]) -> list[
             {"max_depth":3, "size":200", "data": "s2}]
     """
     return [{**config, f"{key_name}": value} for config in grid for value in value_list]
+
+
+project_paths = get_project_paths()
+with Path("conf", "config.yaml").open("r") as f:
+    conf = yaml.safe_load(f)
+
+
+def make_metainfo(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
+    """
+    Create dictionary with information on covariates.
+    Information includes the data type and the scaler function used to normalize input data to [0,1]
+
+    Args:
+        X_train (pd.DataFrame): Covariates for training
+        y_train (pd.Series): Labels for training
+
+    Returns:
+        dict: Dictionary that maps each variable to its type (str) and scaler function
+    """
+
+    def dtype_to_gaminetformat(dtype):
+        return (
+            {"type": "continous"}
+            if is_numeric_dtype(dtype)
+            else {"type": "categorical"}
+        )
+
+    meta_info = {
+        col: dtype_to_gaminetformat(dtype)
+        for col, dtype in dict(X_train.dtypes).items()
+    }
+    meta_info.update({"y": {"type": "target"}})
+    all_0_1_train = y_train.isin([0, 1]).all().all()
+
+    for _, (key, item) in enumerate(meta_info.items()):
+        if item["type"] == "target":
+            if not all_0_1_train:
+                sy = MinMaxScaler((0, 1))
+                y_train = sy.fit_transform(y_train.to_frame())
+            else:
+                sy = None
+            meta_info[key]["scaler"] = sy
+
+        else:
+            sx = MinMaxScaler((0, 1))
+            x_train = sx.fit_transform(X_train[[key]])
+            X_train[[key]] = x_train
+            meta_info[key]["scaler"] = sx
+    return meta_info
+
+
+def get_seed() -> int:
+    return conf["seed"]
