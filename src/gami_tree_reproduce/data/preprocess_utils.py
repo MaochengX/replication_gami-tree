@@ -76,11 +76,7 @@ def get_train_val_test(
     X_val, y_val = data_val.drop(columns="y"), data_val["y"]
     X_test, y_test = data_test.drop(columns="y"), data_test["y"]
 
-    return (
-        (X_train.to_numpy(), y_train.to_numpy()),
-        (X_val.to_numpy(), y_val.to_numpy()),
-        (X_test.to_numpy(), y_test.to_numpy()),
-    )
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
 
 
 def assert_preprocess_data_available(
