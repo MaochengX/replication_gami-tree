@@ -1,387 +1,516 @@
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from os import environ as oenv
-from pathlib import Path
-from typing import Literal, get_args
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-import pandas as pd
-from gaminet.api import GAMINetClassifier, GAMINetRegressor
-from interpret.glassbox import ExplainableBoostingClassifier as EBMC
-from interpret.glassbox import ExplainableBoostingRegressor as EBMR
-from omegaconf import OmegaConf
-from sklearn.metrics import log_loss, mean_squared_error
-from typing_extensions import override
-from xgboost import XGBClassifier as XGBC  # xgbs scikit learn api
-from xgboost import XGBRegressor as XGBR  # xgbs scikit learn api
+from sklearn.preprocessing import SplineTransformer
 
-from gami_tree_reproduce.model.gamitree import (
-    GAMITreeParams,
-    IntTree,
-    MainTree,
-    RoundSnapshot,
-    Spline1D,
-    SplineTransformer,
-    fit_int_tree,
-    fit_leaf,
-    fit_main_tree,
-    loss_derivatives,
-    pseudo_response,
-    sigmoid,
-    tqdm_factory,
-    train_valid_split,
-)
-from gami_tree_reproduce.model.params import (
-    EBMParams,
-    GamiNetParams,
-    Params,
-    XGBParams,
-)
-from gami_tree_reproduce.utils import get_project_paths, get_seed
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
-from .params import get_parameter_class
-
-project_paths = get_project_paths()
-seed = get_seed()
-Task = Literal["classification", "regression"]
+Task = Literal["regression", "classification"]
 
 
-class BaseInducer(ABC):
-    """ """
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    x = np.clip(np.asarray(x, float), -50.0, 50.0)
+    return 1.0 / (1.0 + np.exp(-x))
 
-    @property
-    @abstractmethod
-    def classifier_class(self): ...
 
-    @property
-    @abstractmethod
-    def regressor_class(self): ...
+def train_valid_split(
+    n: int, valid_frac: float, seed: int
+) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(int(seed))
+    idx = np.arange(int(n))
+    rng.shuffle(idx)
+    n_valid = int(np.round(n * float(valid_frac)))
+    n_valid = max(1, min(n - 1, n_valid))
+    return idx[n_valid:], idx[:n_valid]
 
-    @property
-    def task(self) -> str:
-        return self._task
 
-    @property
-    def name(self) -> str:
-        return self._name
+def safe_solve(A: np.ndarray, b: np.ndarray) -> np.ndarray:
+    A = np.asarray(A, float)
+    b = np.asarray(b, float)
+    try:
+        return np.linalg.solve(A, b)
+    except np.linalg.LinAlgError:
+        jitter = 1e-10 * np.eye(A.shape[0], dtype=A.dtype)
+        return np.linalg.solve(A + jitter, b)
 
-    @property
-    @abstractmethod
-    def param_class(self) -> type[Params]: ...
 
-    @property
-    def model(self):
-        return self._model
+def loss_derivatives(
+    task: Task, y: np.ndarray, f: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, float]:
+    y = np.asarray(y, float).reshape(-1)
+    f = np.asarray(f, float).reshape(-1)
+    if task == "regression":
+        r = f - y
+        G = r
+        H = np.ones_like(G)
+        L = 0.5 * float(np.mean(r * r))
+        return G, H, L
+    p = sigmoid(f)
+    eps = 1e-12
+    p = np.clip(p, eps, 1.0 - eps)
+    G = p - y
+    H = p * (1.0 - p)
+    H = np.clip(H, 1e-6, None)
+    L = float(np.mean(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p))))
+    return G, H, L
 
-    @property
-    def params_wrapper(self):
-        return self._params_wrapper
 
-    def __init__(self, task: Task, params_wrapper: Params):
-        """
-        Create an Inducer object, based on parameters and task.
-        Depending on task, a classsification or regression object from the implementing library is chosen.
-        At initialization the constructor sets `_params` to the dictioary of the parameter wrapper and
-        `_model` to the actual model wrapped in the inducer class.
+def pseudo_response(G: np.ndarray, H: np.ndarray) -> np.ndarray:
+    return -np.asarray(G, float) / np.asarray(H, float)
 
-        Args:
-            params (Params): The parameters should be wrapped in a Params object, which validates the parameters.
-            task (Task): The actual task, either "regression" or "classification".
-        """
-        if not isinstance(params_wrapper, self.param_class):
-            msg = f"{self.__class__.__name__} expects params of type {self.param_class.__name__}, but got {type(params_wrapper).__name__}."
-            raise TypeError(msg)
 
-        if task not in get_args(Task):
-            msg = f"Expected task to be type 'Task' but got {type(task)}"
-            raise TypeError(msg)
+@dataclass(frozen=True)
+class Gram:
+    XtWX: np.ndarray
+    XtWz: np.ndarray
+    ztWz: float
+    n: int
 
-        self._params_wrapper = params_wrapper
-        self._task = task
 
-        model_class = (
-            self.classifier_class if task == "classification" else self.regressor_class
+def gram(Phi: np.ndarray, z: np.ndarray, w: np.ndarray) -> Gram:
+    Phi = np.asarray(Phi, float)
+    z = np.asarray(z, float).reshape(-1)
+    w = np.asarray(w, float).reshape(-1)
+    sw = np.sqrt(w)
+    Xw = Phi * sw[:, None]
+    zw = z * sw
+    XtWX = Xw.T @ Xw
+    XtWz = Xw.T @ zw
+    ztWz = float(zw @ zw)
+    return Gram(XtWX=XtWX, XtWz=XtWz, ztWz=ztWz, n=int(z.size))
+
+
+def gcv_from_gram(
+    XtWX: np.ndarray, XtWz: np.ndarray, ztWz: float, lam: float, n: float
+) -> tuple[float, np.ndarray, float]:
+    d = XtWX.shape[0]
+    A = XtWX + float(lam) * np.eye(d)
+    beta = safe_solve(A, XtWz)
+    SSE = float(ztWz - 2.0 * (beta @ XtWz) + beta @ (XtWX @ beta))
+    M = safe_solve(A, XtWX)
+    edf = float(np.trace(M))
+    denom = max(float(n) - edf, 1e-8)
+    return float(SSE / (denom * denom)), beta, float(SSE)
+
+
+def maxcoef_ok(beta: np.ndarray, sd: np.ndarray, max_coef: float) -> bool:
+    if not np.isfinite(max_coef):
+        return True
+    beta = np.asarray(beta, float)
+    if beta.size <= 1:
+        return True
+    scaled = np.abs(beta[1:]) * np.asarray(sd, float)
+    return bool(np.all(scaled <= float(max_coef) + 1e-12))
+
+
+def fit_leaf(
+    Phi: np.ndarray,
+    z: np.ndarray,
+    w: np.ndarray,
+    alpha_grid: Sequence[float],
+    max_coef: float,
+) -> tuple[np.ndarray, float]:
+    g = gram(Phi, z, w)
+    best_beta: np.ndarray | None = None
+    best_gcv = float("inf")
+    best_sse = float("inf")
+    sd = (
+        np.std(np.asarray(Phi, float)[:, 1:], axis=0, ddof=0)
+        if Phi.shape[1] > 1
+        else np.array([], float)
+    )
+    for lam in alpha_grid:
+        score, beta, sse = gcv_from_gram(g.XtWX, g.XtWz, g.ztWz, float(lam), float(g.n))
+        if not np.isfinite(score):
+            continue
+        if not maxcoef_ok(beta, sd, max_coef):
+            continue
+        if score < best_gcv:
+            best_gcv = float(score)
+            best_beta = beta
+            best_sse = float(sse)
+    if best_beta is None:
+        lam = float(alpha_grid[-1])
+        _score, best_beta, best_sse = gcv_from_gram(
+            g.XtWX, g.XtWz, g.ztWz, lam, float(g.n)
         )
-        self._model = model_class(**self._params_wrapper.params)
-
-    def hpo_pending(self) -> bool:
-        return self.params_wrapper.hpo_pending
-
-    def do_hpo(self, X_val, y_val) -> dict:
-        """
-        Optimize hyperparameters stored in self._hpo_setting of parameter wrapper
-
-        Interact with parameter wrapper using mediator object handling hpo process.
-
-        Args:
-            X_val : Validationset (covariates)
-            y_val : Validationset (labels)
-        """
-        hpo_settings = self.params_wrapper.hpo_settings
-        HPOmediator.check_hpo_methods_set(hpo_settings)
-
-        hpo_conf = {}
-        hpo_runs = {}
-        for hpo_param, hpo_setting in self.params_wrapper.hpo_settings.items():
-            hpo_method = hpo_setting["method"]
-            HPOmediator.check_hpo_method_registered(hpo_method)
-            hpo_result, hpo_config = HPOmediator.do_hpo(
-                hpo_param=hpo_param,
-                method=hpo_method,
-                hpo_setting=hpo_setting,
-                inducer=self,
-                X_val=X_val,
-                y_val=y_val,
-            )
-            hpo_conf.update({hpo_param: hpo_result})
-            hpo_runs[hpo_param] = hpo_config
-
-        self.set_params_inducer(hpo_conf)
-        self.params_wrapper._hpo_pending = False
-
-        return hpo_runs
-
-    @abstractmethod
-    def set_params_inducer(self, param_dict: dict) -> None:
-        """
-        Set parameters for inducer object.
-
-        First validate parameters (implemented in underlying package) and set for parameter wrapper.
-        Subclasses must set parameters for the internal model since this is model/API specific.
-
-        Args:
-            param_dict (dict): Plain dictinary with parameter name as key and value.
-        """
-        self.params_wrapper._validate_params(param_dict)
-        self.params_wrapper.set_params(param_dict)
-
-    @abstractmethod
-    def train(self, X_train, y_train) -> np.ndarray: ...
-
-    @abstractmethod
-    def predict(self, X_new) -> np.ndarray: ...
+    return best_beta, float(best_sse)
 
 
-# =======================================================================================
-#                           Derived Inducer Classes
-# =======================================================================================
-class EBMinducer(BaseInducer):
-    @property
-    def classifier_class(self) -> type[EBMC]:
-        return EBMC
-
-    @property
-    def regressor_class(self) -> type[EBMR]:
-        return EBMR
-
-    @property
-    def name(self) -> str:
-        return "ebm"
-
-    @property
-    def param_class(self):
-        return EBMParams
-
-    @override
-    def set_params_inducer(self, param_dict):
-        super().set_params_inducer(param_dict)
-        self._model.set_params(**param_dict)
-
-    @override
-    def train(self, X, y) -> np.ndarray:
-        self._model.fit(X, y)
-        if self._task == "regression":
-            loss = mean_squared_error(self._model.predict(X), y)
-        else:
-            loss = log_loss(self._model.predict(X), y)
-        return loss
-
-    @override
-    def predict(self, X):
-        return self._model.predict(X)
+def bin_edges_quantile(x: np.ndarray, B: int) -> np.ndarray:
+    x = np.asarray(x, float).reshape(-1)
+    x = x[np.isfinite(x)]
+    if x.size == 0:
+        return np.array([-np.inf, np.inf], float)
+    qs = np.linspace(0.0, 1.0, int(B) + 1)
+    edges = np.quantile(x, qs, method="linear")
+    edges[0] = -np.inf
+    edges[-1] = np.inf
+    edges = np.unique(edges)
+    if edges.size < 2:
+        edges = np.array([-np.inf, np.inf], float)
+    return edges
 
 
-class XGBinducer(BaseInducer):
-    @property
-    def classifier_class(self) -> type[XGBC]:
-        return XGBC
-
-    @property
-    def regressor_class(self) -> type[XGBR]:
-        return XGBR
-
-    @property
-    def name(self) -> str:
-        return "xgb"
-
-    @property
-    def param_class(self):
-        return XGBParams
-
-    @override
-    def set_params_inducer(self, param_dict):
-        super().set_params_inducer(param_dict)
-        self._model.set_params(**param_dict)
-
-    @override
-    def train(self, X_train, y_train) -> np.array:
-        self._model.fit(X_train, y_train, eval_set=[(X_train, y_train)], verbose=False)
-        if self.task == "regression":
-            loss = self._model.evals_result()["validation_0"]["rmse"][-1]
-        else:
-            loss = self._model.evals_result()["validation_0"]["logloss"][-1]
-        return loss
-
-    @override
-    def predict(self, X_new) -> np.ndarray:
-        return self._model.predict(X_new)
+def bin_assign(x: np.ndarray, edges: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, float).reshape(-1)
+    b = np.searchsorted(edges, x, side="right") - 1
+    return np.clip(b, 0, edges.size - 2).astype(int)
 
 
-class GamiNetInducer(BaseInducer):
-    @property
-    def name(self) -> str:
-        return "gaminet"
-
-    @property
-    def classifier_class(self) -> type[GAMINetClassifier]:
-        return GAMINetClassifier
-
-    @property
-    def regressor_class(self) -> type[GAMINetRegressor]:
-        return GAMINetRegressor
-
-    @property
-    def param_class(self):
-        return GamiNetParams
-
-    @override
-    def set_params_inducer(self, param_dict):
-        super().set_params_inducer(param_dict)
-        self._model.set_params(**param_dict)
-
-    @override
-    def train(self, X_train: pd.DataFrame, y_train: pd.DataFrame | pd.Series) -> None:
-        self._model.fit(X_train, y_train)
-
-    @override
-    def predict(self, X) -> np.ndarray:
-        return self._model.predict(X)
+def binned_stats(
+    Phi: np.ndarray, z: np.ndarray, w: np.ndarray, bins: np.ndarray, nb: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    Phi = np.asarray(Phi, float)
+    z = np.asarray(z, float).reshape(-1)
+    w = np.asarray(w, float).reshape(-1)
+    bins = np.asarray(bins, int).reshape(-1)
+    _n, d = Phi.shape
+    wz = w * z
+    wzz = w * z * z
+    Sxz = np.zeros((nb, d), float)
+    Szz = np.zeros(nb, float)
+    cnt = np.zeros(nb, int)
+    sum1 = np.zeros((nb, d - 1), float) if d > 1 else np.zeros((nb, 0), float)
+    sum2 = np.zeros((nb, d - 1), float) if d > 1 else np.zeros((nb, 0), float)
+    Sxx = np.zeros((nb, d, d), float)
+    np.add.at(Sxz, bins, (Phi * wz[:, None]))
+    np.add.at(Szz, bins, wzz)
+    np.add.at(cnt, bins, 1)
+    if d > 1:
+        P1 = Phi[:, 1:]
+        np.add.at(sum1, bins, P1)
+        np.add.at(sum2, bins, P1 * P1)
+    for a in range(d):
+        for b in range(d):
+            np.add.at(Sxx[:, a, b], bins, w * Phi[:, a] * Phi[:, b])
+    return Sxx, Sxz, Szz, cnt, sum1, sum2
 
 
-INDUCER_REGISTRY = {
-    "ebm": EBMinducer,
-    "xgb": XGBinducer,
-    "gaminet": GamiNetInducer,
-}
+def sd_from_sums(sum1: np.ndarray, sum2: np.ndarray, n: int) -> np.ndarray:
+    if sum1.size == 0:
+        return np.array([], float)
+    n = max(int(n), 1)
+    mean = sum1 / float(n)
+    var = (sum2 / float(n)) - mean * mean
+    var = np.maximum(var, 0.0)
+    return np.sqrt(var)
 
 
-def get_inducer_class(name: str) -> callable:
-    key = name.lower()
-    if key not in INDUCER_REGISTRY:
-        msg = f"There is no inducer '{key}' that is registered."
-        raise KeyError(msg)
-
-    return INDUCER_REGISTRY[key]
-
-
-# =======================================================================================
-#                           HPO management
-# =======================================================================================
-
-
-conf = OmegaConf.load(Path(oenv["PROJECT_ROOT"], "conf", "config.yaml"))
-rng = np.random.default_rng(conf.seed)
-
-
-class HPOmediator(ABC):
-    @abstractmethod
-    def check_hpo_methods_set(hpo_settings: dict):
-        for hpo_param, hpo_setting in hpo_settings.items():
-            if "method" not in hpo_setting:
-                msg = f"Expected 'method: <sth>' enty for hpo parameter '{hpo_param}'"
-                raise KeyError(msg)
-
-    @abstractmethod
-    def check_hpo_method_registered(method_name: str):
-        if method_name not in HPO_METHOD_REGISTRY:
-            msg = f"Method '{method_name}' is not implemented and/or registered in method registry"
-            raise KeyError(msg)
-
-    @abstractmethod
-    def do_grid_search(
-        hpo_param: str, grid: list, inducer, X_val: np.array, y_val: np.array
-    ):
-        configurations = {}
-        inducer_name = inducer.name
-        task = inducer.task
-        default_params = inducer.params_wrapper.params
-        best_loss = float("inf")
-        for candidate_value in grid:
-            new_params = default_params.update({hpo_param: candidate_value})
-            candidate_params_wrapper = get_parameter_class(inducer_name)(
-                params=new_params, task=task
-            )
-            candidate_inducer = get_inducer_class(inducer_name)(
-                task=task, params_wrapper=candidate_params_wrapper
-            )
-            candidate_inducer.set_params_inducer({hpo_param: candidate_value})
-            loss_trace = candidate_inducer.train(X_val, y_val)
-            if isinstance(
-                loss_trace, float | int
-            ):  # if no trace but just final loss provided
-                current_loss = loss_trace
-            else:
-                current_loss = loss_trace[-1]
-            configurations.update({candidate_value: current_loss})
-            if current_loss < best_loss:
-                best_loss = current_loss
-                best_value = candidate_value
-
-        return (best_value, configurations)
-
-    @abstractmethod
-    def do_random_search(
-        hpo_param,
-        distribution: np.random.Generator,
-        params: dict,
-        inducer,
-        X_val,
-        y_val,
-    ):
-        random_grid = distribution(**params)
-        return HPOmediator.do_grid_search(hpo_param, random_grid, inducer, X_val, y_val)
-
-    @abstractmethod
-    def do_hpo(hpo_param: str, method: str, hpo_setting: dict, inducer, X_val, y_val):
-        if method == "random":
-            if "distribution" not in hpo_setting:
-                msg = "For method 'random' expected 'distribution' keyword that matches numpy generator."
-                raise KeyError(msg)
-            if not hasattr(rng, distribution := hpo_setting["distribution"]):
-                msg = f"Numpy rng hast no implementation of desired distibution {distribution}"
-                raise KeyError(msg)
-            if "params" not in hpo_setting:
-                msg = f"Expected 'params' key to initialize distribution {hpo_setting['distribution']}"
-                raise KeyError(msg)
-
-            distribution = getattr(rng, hpo_setting["distribution"])
-            params = hpo_setting["params"]
-            hpo_result = HPOmediator.do_random_search(
-                hpo_param, distribution, params, inducer, X_val, y_val
-            )
-        elif method == "grid":
-            hpo_result = HPOmediator.do_grid_search(
-                hpo_param, hpo_setting["grid"], inducer, X_val, y_val
-            )
-        else:
-            raise KeyError
-        return hpo_result
+def fit_leaf_from_gram(
+    XtWX: np.ndarray,
+    XtWz: np.ndarray,
+    ztWz: float,
+    n: int,
+    alpha_grid: Sequence[float],
+    max_coef: float,
+    sd: np.ndarray,
+) -> tuple[np.ndarray, float]:
+    best_beta: np.ndarray | None = None
+    best_gcv = float("inf")
+    best_sse = float("inf")
+    for lam in alpha_grid:
+        score, beta, sse = gcv_from_gram(XtWX, XtWz, ztWz, float(lam), float(n))
+        if not np.isfinite(score):
+            continue
+        if not maxcoef_ok(beta, sd, max_coef):
+            continue
+        if score < best_gcv:
+            best_gcv = float(score)
+            best_beta = beta
+            best_sse = float(sse)
+    if best_beta is None:
+        lam = float(alpha_grid[-1])
+        _score, best_beta, best_sse = gcv_from_gram(XtWX, XtWz, ztWz, lam, float(n))
+    return best_beta, float(best_sse)
 
 
-HPO_METHOD_REGISTRY = {
-    "grid": HPOmediator.do_grid_search,
-    "random": HPOmediator.do_random_search,
-}
+def best_split_binned(
+    x_split: np.ndarray,
+    Phi: np.ndarray,
+    z: np.ndarray,
+    w: np.ndarray,
+    n_bins: int,
+    min_leaf: int,
+    alpha_grid: Sequence[float],
+    max_coef: float,
+) -> tuple[float, float | None]:
+    x_split = np.asarray(x_split, float).reshape(-1)
+    Phi = np.asarray(Phi, float)
+    z = np.asarray(z, float).reshape(-1)
+    w = np.asarray(w, float).reshape(-1)
+
+    edges = bin_edges_quantile(x_split, int(n_bins))
+    bins = bin_assign(x_split, edges)
+    nb = int(edges.size - 1)
+    if nb <= 1:
+        return float("inf"), None
+
+    Sxx, Sxz, Szz, cnt, sum1, sum2 = binned_stats(Phi, z, w, bins, nb)
+
+    cSxx = np.cumsum(Sxx, axis=0)
+    cSxz = np.cumsum(Sxz, axis=0)
+    cSzz = np.cumsum(Szz, axis=0)
+    ccnt = np.cumsum(cnt, axis=0)
+    csum1 = np.cumsum(sum1, axis=0) if sum1.size else sum1
+    csum2 = np.cumsum(sum2, axis=0) if sum2.size else sum2
+
+    totSxx = cSxx[-1]
+    totSxz = cSxz[-1]
+    totSzz = float(cSzz[-1])
+    totcnt = int(ccnt[-1])
+    totsum1 = csum1[-1] if sum1.size else sum1
+    totsum2 = csum2[-1] if sum2.size else sum2
+
+    best = float("inf")
+    best_thr: float | None = None
+
+    for cut in range(nb - 1):
+        nL = int(ccnt[cut])
+        nR = int(totcnt - nL)
+        if nL < int(min_leaf) or nR < int(min_leaf):
+            continue
+
+        XL = cSxx[cut]
+        XzL = cSxz[cut]
+        zzL = float(cSzz[cut])
+
+        XR = totSxx - XL
+        XzR = totSxz - XzL
+        zzR = float(totSzz - zzL)
+
+        sdL = sd_from_sums(
+            csum1[cut] if sum1.size else sum1, csum2[cut] if sum2.size else sum2, nL
+        )
+        sdR = sd_from_sums(
+            (totsum1 - (csum1[cut] if sum1.size else sum1)) if sum1.size else sum1,
+            (totsum2 - (csum2[cut] if sum2.size else sum2)) if sum2.size else sum2,
+            nR,
+        )
+
+        _bL, sseL = fit_leaf_from_gram(XL, XzL, zzL, nL, alpha_grid, max_coef, sdL)
+        _bR, sseR = fit_leaf_from_gram(XR, XzR, zzR, nR, alpha_grid, max_coef, sdR)
+        sse = float(sseL + sseR)
+        if sse < best:
+            best = sse
+            best_thr = float(edges[cut + 1])
+
+    return float(best), best_thr
+
+
+@dataclass(frozen=True)
+class Node:
+    t: float | None
+    beta: np.ndarray | None
+    L: Node | None = None
+    R: Node | None = None
+
+
+@dataclass(frozen=True)
+class MainTree:
+    j: int
+    root: Node
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        X = np.asarray(X, float)
+        xj = X[:, self.j]
+        out = np.zeros(X.shape[0], dtype=float)
+        stack: list[tuple[Node, np.ndarray]] = [(self.root, np.arange(X.shape[0]))]
+        while stack:
+            v, I = stack.pop()  # noqa: E741
+            if I.size == 0:
+                continue
+            if v.t is None:
+                Phi = np.column_stack([np.ones(I.size, float), xj[I]])
+                out[I] = Phi @ v.beta
+                continue
+            thr = float(v.t)
+            IL = I[xj[I] <= thr]
+            IR = I[xj[I] > thr]
+            if v.L is not None:
+                stack.append((v.L, IL))
+            if v.R is not None:
+                stack.append((v.R, IR))
+        return out
+
+
+@dataclass(frozen=True)
+class IntTree:
+    j: int
+    k: int
+    Bj: SplineTransformer
+    root: Node
+
+    def basis(self, xj: np.ndarray) -> np.ndarray:
+        Bj = self.Bj.transform(np.asarray(xj, float).reshape(-1, 1))
+        return np.concatenate([np.ones((Bj.shape[0], 1), float), Bj], axis=1)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        X = np.asarray(X, float)
+        xj = X[:, self.j]
+        xk = X[:, self.k]
+        out = np.zeros(X.shape[0], dtype=float)
+        stack: list[tuple[Node, np.ndarray]] = [(self.root, np.arange(X.shape[0]))]
+        while stack:
+            v, I = stack.pop()  # noqa: E741
+            if I.size == 0:
+                continue
+            if v.t is None:
+                Phi = self.basis(xj[I])
+                out[I] = Phi @ v.beta
+                continue
+            thr = float(v.t)
+            IL = I[xk[I] <= thr]
+            IR = I[xk[I] > thr]
+            if v.L is not None:
+                stack.append((v.L, IL))
+            if v.R is not None:
+                stack.append((v.R, IR))
+        return out
+
+
+def fit_main_tree(
+    xj: np.ndarray,
+    z: np.ndarray,
+    w: np.ndarray,
+    max_depth: int,
+    n_bins: int,
+    min_leaf: int,
+    alpha_grid: Sequence[float],
+    max_coef: float,
+) -> tuple[Node, float]:
+    xj = np.asarray(xj, float).reshape(-1)
+    z = np.asarray(z, float).reshape(-1)
+    w = np.asarray(w, float).reshape(-1)
+    Phi = np.column_stack([np.ones(xj.size, float), xj])
+    beta, sse_leaf = fit_leaf(Phi, z, w, alpha_grid, max_coef)
+    if int(max_depth) <= 0 or xj.size < 2 * int(min_leaf):
+        return Node(t=None, beta=beta), float(sse_leaf)
+    best_sse, thr = best_split_binned(
+        xj, Phi, z, w, n_bins, min_leaf, alpha_grid, max_coef
+    )
+    if thr is None or best_sse >= sse_leaf:
+        return Node(t=None, beta=beta), float(sse_leaf)
+    m = xj <= float(thr)
+    L, sseL = fit_main_tree(
+        xj[m], z[m], w[m], max_depth - 1, n_bins, min_leaf, alpha_grid, max_coef
+    )
+    R, sseR = fit_main_tree(
+        xj[~m], z[~m], w[~m], max_depth - 1, n_bins, min_leaf, alpha_grid, max_coef
+    )
+    return Node(t=float(thr), beta=None, L=L, R=R), float(sseL + sseR)
+
+
+def fit_int_tree(
+    x_model: np.ndarray,
+    x_split: np.ndarray,
+    z: np.ndarray,
+    w: np.ndarray,
+    tr: SplineTransformer,
+    max_depth: int,
+    n_bins: int,
+    min_leaf: int,
+    alpha_grid: Sequence[float],
+    max_coef: float,
+) -> tuple[Node, float]:
+    x_model = np.asarray(x_model, float).reshape(-1)
+    x_split = np.asarray(x_split, float).reshape(-1)
+    z = np.asarray(z, float).reshape(-1)
+    w = np.asarray(w, float).reshape(-1)
+    B = tr.transform(x_model.reshape(-1, 1))
+    Phi = np.concatenate([np.ones((B.shape[0], 1), float), B], axis=1)
+    beta, sse_leaf = fit_leaf(Phi, z, w, alpha_grid, max_coef)
+    if int(max_depth) <= 0 or x_split.size < 2 * int(min_leaf):
+        return Node(t=None, beta=beta), float(sse_leaf)
+    best_sse, thr = best_split_binned(
+        x_split, Phi, z, w, n_bins, min_leaf, alpha_grid, max_coef
+    )
+    if thr is None or best_sse >= sse_leaf:
+        return Node(t=None, beta=beta), float(sse_leaf)
+    m = x_split <= float(thr)
+    L, sseL = fit_int_tree(
+        x_model[m],
+        x_split[m],
+        z[m],
+        w[m],
+        tr,
+        max_depth - 1,
+        n_bins,
+        min_leaf,
+        alpha_grid,
+        max_coef,
+    )
+    R, sseR = fit_int_tree(
+        x_model[~m],
+        x_split[~m],
+        z[~m],
+        w[~m],
+        tr,
+        max_depth - 1,
+        n_bins,
+        min_leaf,
+        alpha_grid,
+        max_coef,
+    )
+    return Node(t=float(thr), beta=None, L=L, R=R), float(sseL + sseR)
+
+
+@dataclass(frozen=True)
+class Spline1D:
+    j: int
+    tr: SplineTransformer
+    gamma: np.ndarray
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        X = np.asarray(X, float)
+        x = X[:, self.j]
+        B = self.tr.transform(x.reshape(-1, 1))
+        Phi = np.concatenate([np.ones((B.shape[0], 1), float), B], axis=1)
+        return Phi @ self.gamma
+
+
+@dataclass(frozen=True)
+class RoundSnapshot:
+    main_end: int
+    int_end: int
+    pair_splines: dict[tuple[int, int], tuple[Spline1D, Spline1D]]
+
+
+@dataclass
+class GAMITreeParams:
+    M: int = 1000
+    max_depth: int = 2
+    lam: float = 0.2
+    R: int = 5
+    q: int = 10
+    nknots: int = 5
+    alpha_grid: Sequence[float] = tuple(np.exp(np.linspace(-8.0, 0.0, 9)))
+    max_coef: float = 1.0
+    d: int = 50
+    valid_frac: float = 0.25
+    seed: int = 0
+    n_bins: int = 64
+    min_leaf: int = 20
+    filter_subsample: int = 10**9
+    filter_max_depth: int = 1
+    filter_n_bins: int = 16
+    filter_alpha_grid: Sequence[float] = tuple(np.exp(np.linspace(-8.0, 0.0, 9)))
+    filter_prescreen_topk: int = 0
+    verbose: bool = True
+    show_progress: bool = True
+
+
+def tqdm_factory():
+    try:
+        from tqdm import tqdm
+
+        return tqdm  # noqa: TRY300
+    except Exception:  # noqa: BLE001
+        return None
 
 
 class GAMITree:
@@ -789,7 +918,7 @@ class GAMITree:
                 loop.set_postfix({"pairs": len(out)})
         return out
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "GAMITree":
+    def fit(self, X: np.ndarray, y: np.ndarray) -> GAMITree:
         X = np.asarray(X, float)
         y = np.asarray(y, float).reshape(-1)
         n = int(X.shape[0])
