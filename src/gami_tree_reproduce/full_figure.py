@@ -120,6 +120,57 @@ def plot_interaction_slices(model, X, x_cols, a: int, b: int, fname: str, n_slic
         plt.title(title)
     savefig(fname)
 
+def plot_interaction_slices(
+    model,
+    X,
+    x_cols,
+    a: int,
+    b: int,
+    fname: str,
+    n_slices: int = 7,
+    title: Optional[str] = None,
+    swap_axes: bool = False,
+):
+    if not swap_axes:
+        x_axis, slice_axis = a, b
+    else:
+        x_axis, slice_axis = b, a
+
+    xj = X[:, x_axis]
+    xk = X[:, slice_axis]
+
+    qs = np.linspace(0.1, 0.9, n_slices)
+    qvals = np.quantile(xk, qs)
+
+    xj_grid = np.linspace(
+        np.quantile(xj, 0.01),
+        np.quantile(xj, 0.99),
+        300,
+    )
+
+    base = np.mean(X, axis=0, keepdims=True)
+
+    plt.figure(figsize=(8, 5))
+    for qv in qvals:
+        Xg = np.repeat(base, xj_grid.size, axis=0)
+        Xg[:, x_axis] = xj_grid
+        Xg[:, slice_axis] = qv
+        fg = model.interaction_component(Xg, a, b)
+        plt.plot(xj_grid, fg, label=f"{x_cols[slice_axis]}={qv:.2g}")
+
+    plt.xlabel(x_cols[x_axis])
+    plt.ylabel("interaction effect")
+    plt.legend()
+
+    if title:
+        plt.title(title)
+
+    savefig(fname)
+
+
+
+
+
 
 def main() -> None:
     ensure_dirs()
@@ -145,7 +196,6 @@ def main() -> None:
     )
     plot_main_effect(model_r0, X_fit_r0, xcols_r0, "X_11", "Figure3_fx11_model4_rho0.png", title=None)
     plot_main_effect(model_r0, X_fit_r0, xcols_r0, "X_19", "Figure3_fx19_model4_rho0.png", title=None)
-    plot_main_effect(model_r0, X_fit_r0, xcols_r0, "X_26", "Figure3_fx26_model4_rho0.png", title=None)
 
     model_r05, meta_r05 = load_cached(tags["model4_rho05"])
     X_fit_r05, xcols_r05 = load_X_fit_from_meta(meta_r05)
@@ -175,6 +225,9 @@ def main() -> None:
     model_m3, meta_m3 = load_cached(tags["model3_rho05"])
     X_fit_m3, xcols_m3 = load_X_fit_from_meta(meta_m3)
 
+    model_m4, meta_m4 = load_cached(tags["model4_rho05"])
+    X_fit_m4, xcols_m4 = load_X_fit_from_meta(meta_m4)
+
     plot_top10_interaction_importance(
         model_m3,
         X_fit_m3,
@@ -183,9 +236,18 @@ def main() -> None:
         "top 10 interaction pairs",
     )
 
+    plot_top10_interaction_importance(
+        model_m4,
+        X_fit_m4,
+        xcols_m4,
+        "interaction_importance_model4_rho05.png",
+        "top 10 interaction pairs",
+    )
+
+
     pbar = tqdm(top_pairs_m2, desc="Figure9 Model2 interaction effects", unit="pair")
     for (a, b), _v in pbar:
-        name = f"Figure9_model2_{xcols_m2[a]}_{xcols_m2[b]}.png"
+        name = f"model2_{xcols_m2[a]}_{xcols_m2[b]}.png"
         pbar.set_postfix({"pair": f"{xcols_m2[a]}x{xcols_m2[b]}"})
         plot_interaction_slices(
             model_m2,
@@ -196,7 +258,67 @@ def main() -> None:
             name,
             n_slices=7,
             title="Interaction effect plot for GAMI-Tree",
+            swap_axes=True,
         )
+
+
+
+
+    model_m33, meta_m33 = load_cached(tags["model3_rho05"])
+    X_fit_m33, xcols_m33 = load_X_fit_from_meta(meta_m33)
+
+    top_pairs_m33 = plot_top10_interaction_importance(
+        model_m33,
+        X_fit_m33,
+        xcols_m33,
+        "Figure7_interaction_importance_model3_rho05.png",
+        "top 10 interaction pairs",
+    )
+    pbar = tqdm(top_pairs_m33, desc="Figure9 Model3 interaction effects", unit="pair")
+    for (a, b), _v in pbar:
+        name = f"model3_{xcols_m33[a]}_{xcols_m33[b]}.png"
+        pbar.set_postfix({"pair": f"{xcols_m33[a]}x{xcols_m33[b]}"})
+        plot_interaction_slices(
+            model_m33,
+            X_fit_m33,
+            xcols_m33,
+            a,
+            b,
+            name,
+            n_slices=7,
+            title="Interaction effect plot for GAMI-Tree",
+            swap_axes=True,
+        )
+
+    
+    model_m44, meta_m44 = load_cached(tags["model4_rho05"])
+    X_fit_m44, xcols_m44 = load_X_fit_from_meta(meta_m44)
+
+    top_pairs_m44 = plot_top10_interaction_importance(
+        model_m44,
+        X_fit_m44,
+        xcols_m44,
+        "Figure7_interaction_importance_model4_rho05.png",
+        "top 10 interaction pairs",
+    )
+    pbar = tqdm(top_pairs_m44, desc="Figure9 Model4 interaction effects", unit="pair")
+    for (a, b), _v in pbar:
+        name = f"model4_{xcols_m44[a]}_{xcols_m44[b]}.png"
+        pbar.set_postfix({"pair": f"{xcols_m44[a]}x{xcols_m44[b]}"})
+        plot_interaction_slices(
+            model_m44,
+            X_fit_m44,
+            xcols_m44,
+            a,
+            b,
+            name,
+            n_slices=7,
+            title="Interaction effect plot for GAMI-Tree",
+            swap_axes=True,
+        )
+    
+    
+
 
     tqdm.write(f"[{ts()}] Done. Figures in: {OUTDIR}")
 
