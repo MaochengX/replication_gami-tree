@@ -36,19 +36,24 @@ def safe_solve(A: np.ndarray, b: np.ndarray) -> np.ndarray:
 def loss_derivatives(task: Task, y: np.ndarray, f: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
     y = np.asarray(y, float).reshape(-1)
     f = np.asarray(f, float).reshape(-1)
+
     if task == "regression":
         r = f - y
-        G = r
-        H = np.ones_like(G)
-        L = 0.5 * float(np.mean(r * r))
+        G = 2.0 * r
+        H = np.full_like(G, 2.0, dtype=float)
+        L = float(np.mean(r * r))
         return G, H, L
+
+    y01 = y
+    if not np.all((y01 == 0.0) | (y01 == 1.0)):
+        raise ValueError("For task='classification', y must be binary in {0,1}.")
+
+    softplus = np.maximum(f, 0.0) + np.log1p(np.exp(-np.abs(f)))
+    L = float(np.mean(softplus - y01 * f))
     p = sigmoid(f)
-    eps = 1e-12
-    p = np.clip(p, eps, 1.0 - eps)
-    G = p - y
+    G = p - y01
     H = p * (1.0 - p)
     H = np.clip(H, 1e-6, None)
-    L = float(np.mean(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p))))
     return G, H, L
 
 
@@ -321,7 +326,6 @@ class IntTree:
     k: int
     Bj: SplineTransformer
     root: Node
-
     def basis(self, xj: np.ndarray) -> np.ndarray:
         Bj = self.Bj.transform(np.asarray(xj, float).reshape(-1, 1))
         return np.concatenate([np.ones((Bj.shape[0], 1), float), Bj], axis=1)
@@ -463,6 +467,9 @@ def tqdm_factory():
 class GAMITree:
     def __init__(self, task: Task = "regression", log: Optional[Callable[[str], None]] = None, **params):
         self.task: Task = task
+        if 'max_depth' not in params or params.get('max_depth') is None:
+            params = dict(params)
+            params['max_depth'] = 2 if task == 'regression' else 1
         self.params = GAMITreeParams(**params)
         self.log = log if log is not None else (lambda s: print(s, flush=True))
         self.base: float = 0.0
@@ -507,6 +514,44 @@ class GAMITree:
         if self.task == "regression":
             return f
         return (sigmoid(f) >= 0.5).astype(int)
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+
+        f = self.predict_raw(X)
+        if self.task == "regression":
+            return f
+        return sigmoid(f)
+
+    def loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        f = self.predict_raw(X)
+        _G, _H, L = loss_derivatives(self.task, y, f)
+        return float(L)
+
+    def evaluate(self, X: np.ndarray, y: np.ndarray) -> Dict[str, float]:
+        X = np.asarray(X, float)
+        y = np.asarray(y).reshape(-1)
+        out: Dict[str, float] = {}
+        out["loss"] = self.loss(X, y)
+
+        if self.task == "regression":
+            pred = self.predict_raw(X)
+            mse = float(np.mean((pred - y.astype(float)) ** 2))
+            out["mse"] = mse
+            out["rmse"] = float(np.sqrt(mse))
+            return out
+
+        proba = self.predict_proba(X).reshape(-1)
+        pred = (proba >= 0.5).astype(int)
+        y01 = y.astype(int)
+        out["accuracy"] = float(np.mean(pred == y01))
+
+        try:
+            from sklearn.metrics import roc_auc_score
+            if len(np.unique(y01)) == 2:
+                out["auc"] = float(roc_auc_score(y01, proba))
+        except Exception:
+            pass
+        return out
 
     def main_component_round(self, X: np.ndarray, j: int, r: int) -> np.ndarray:
         X = np.asarray(X, float)
