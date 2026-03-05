@@ -104,24 +104,24 @@ def main() -> None:
     task = str(params["task"])
 
     TASKS = [
-        # ("model1_n500k_rho0", ROOT / "data" / "sim1_model1r.pq"),
-        # ("model2_n500k_rho0", ROOT / "data" / "sim1_model2r.pq"),
-        # ("model3_n500k_rho0", ROOT / "data" / "sim1_model3r.pq"),
-        # ("model4_n500k_rho0", ROOT / "data" / "sim1_model4r.pq"),
+        ("model1_n500k_rho0", ROOT / "data" / "sim1_model1r.pq"),
+        ("model2_n500k_rho0", ROOT / "data" / "sim1_model2r.pq"),
+        ("model3_n500k_rho0", ROOT / "data" / "sim1_model3r.pq"),
+        ("model4_n500k_rho0", ROOT / "data" / "sim1_model4r.pq"),
 
-        # ("model1_n500k_rho05", ROOT / "data" / "sim2_model1r.pq"),
-        # ("model2_n500k_rho05", ROOT / "data" / "sim2_model2r.pq"),
-        # ("model3_n500k_rho05", ROOT / "data" / "sim2_model3r.pq"),
-        # ("model4_n500k_rho05", ROOT / "data" / "sim2_model4r.pq"),
+        ("model1_n500k_rho05", ROOT / "data" / "sim2_model1r.pq"),
+        ("model2_n500k_rho05", ROOT / "data" / "sim2_model2r.pq"),
+        ("model3_n500k_rho05", ROOT / "data" / "sim2_model3r.pq"),
+        ("model4_n500k_rho05", ROOT / "data" / "sim2_model4r.pq"),
 
-        # ("model1_n50k_rho0", ROOT / "data" / "sim3_model1r.pq"),
-        # ("model2_n50k_rho0", ROOT / "data" / "sim3_model2r.pq"),
-        # ("model3_n50k_rho0", ROOT / "data" / "sim3_model3r.pq"),
-        # ("model4_n50k_rho0", ROOT / "data" / "sim3_model4r.pq"),
+        ("model1_n50k_rho0", ROOT / "data" / "sim3_model1r.pq"),
+        ("model2_n50k_rho0", ROOT / "data" / "sim3_model2r.pq"),
+        ("model3_n50k_rho0", ROOT / "data" / "sim3_model3r.pq"),
+        ("model4_n50k_rho0", ROOT / "data" / "sim3_model4r.pq"),
 
-        # ("model1_n50k_rho05", ROOT / "data" / "sim4_model1r.pq"),
-        # ("model2_n50k_rho05", ROOT / "data" / "sim4_model2r.pq"),
-        # ("model3_n50k_rho05", ROOT / "data" / "sim4_model3r.pq"),
+        ("model1_n50k_rho05", ROOT / "data" / "sim4_model1r.pq"),
+        ("model2_n50k_rho05", ROOT / "data" / "sim4_model2r.pq"),
+        ("model3_n50k_rho05", ROOT / "data" / "sim4_model3r.pq"),
         ("model4_n50k_rho05", ROOT / "data" / "sim4_model4r.pq"),
     ]
 
