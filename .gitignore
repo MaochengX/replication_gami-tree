@@ -103,6 +103,6 @@ attic/
 
 # assets
 assets/
-!assets/plots
+!assets/plots/**
 # outputs
 outputs/
