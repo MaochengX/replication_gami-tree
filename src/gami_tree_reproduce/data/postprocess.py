@@ -1,13 +1,12 @@
 from pathlib import Path
 
 import joblib
-import matplotlib as mpl
+import numpy as np
 import pandas as pd
 import yaml
 
 from gami_tree_reproduce.utils import get_project_paths
 
-mpl.use("Agg")
 project_paths = get_project_paths()
 
 
@@ -120,9 +119,6 @@ def get_ebm_effects(ebm_model) -> pd.DataFrame:
     idx_single = [idx for idx, tupl in enumerate(terms) if len(tupl) == 1]
     idx_double = [idx for idx, tupl in enumerate(terms) if len(tupl) == 2]
 
-    single_features = [
-        term for term in terms if len(term) == 1
-    ]  # for main effects, [(0,), (1,),...]
     double_features = [
         term for term in terms if len(term) == 2
     ]  # for interaction effects, [(0,3), (1,2), ...]
@@ -139,19 +135,20 @@ def get_ebm_effects(ebm_model) -> pd.DataFrame:
         for tupl, scores in zip(double_features, double_scores, strict=True)
     }
 
+    max_bins = int(ebm_model.max_bins)
+    single_input = [
+        np.linspace(lower, upper, max_bins).tolist()
+        for lower, upper in ebm_model.feature_bounds_
+    ]
     single_input_dict = {
-        term_idx: ebm_model.histogram_edges_[term_idx].tolist()
-        for term_idx in range(len(single_features))
+        "X" + str(idx + 1): element for idx, element in enumerate(single_input)
     }
     double_input_dict = {
         "X" + str(tupl[0] + 1) + "&" + "X" + str(tupl[1] + 1): [
-            single_input_dict[tupl[0]],
-            single_input_dict[tupl[1]],
+            single_input[tupl[0]],
+            single_input[tupl[1]],
         ]
         for tupl in double_features
-    }
-    single_input_dict = {
-        "X" + str(key + 1): value for key, value in single_input_dict.items()
     }
 
     single_dict = {
