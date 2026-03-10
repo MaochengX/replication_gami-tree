@@ -1,5 +1,4 @@
-.PHONY: sim_data clear_sim_data clear_data clear_runs clear \
-        figure_r figure_c figures clear_figures
+.PHONY: sim_data clear_sim_data clear_data training_r training_c training clear_training figure_r figure_c figures clear_figures clear	
 
 sim_data:
 	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0 --filenameprefix=sim1
@@ -21,6 +20,8 @@ training_r:
 training_c:
 	@uv run python3 src/gami_tree_reproduce/training_c.py
 	@echo "classification training completed"
+
+training: training_r training_c
 
 clear_training:
 	@rm -rf src/gami_tree_reproduce/cache
