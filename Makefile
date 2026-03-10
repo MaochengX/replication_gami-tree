@@ -14,11 +14,11 @@ clear_sim_data:
 clear_data: clear_sim_data 
 
 training_r:
-	@uv run python3 src/gami_tree_reproduce/training_r.py
+	@uv run python -m src.gami_tree_reproduce.training_r
 	@echo "regression training completed"
 
 training_c:
-	@uv run python3 src/gami_tree_reproduce/training_c.py
+	@uv run python -m src.gami_tree_reproduce.training_c
 	@echo "classification training completed"
 
 training: training_r training_c
@@ -28,11 +28,11 @@ clear_training:
 	@echo "removed all cache files"
 
 figure_r:
-	@uv run python3 src/gami_tree_reproduce/figure_r.py
+	@uv run python -m src.gami_tree_reproduce.figure_r
 	@echo "regression figures generated"
 
 figure_c:
-	@uv run python3 src/gami_tree_reproduce/figure_c.py
+	@uv run python -m src.gami_tree_reproduce.figure_c
 	@echo "classification figures generated"
 
 figures: figure_r figure_c
