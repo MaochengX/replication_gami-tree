@@ -1,37 +1,44 @@
+.PHONY: sim_data clear_sim_data clear_data clear_runs clear \
+        figure_r figure_c figures clear_figures
 
-.PHONY: sim_data
 sim_data:
 	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0 --filenameprefix=sim1
 	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=500000 cor=0.5 --filenameprefix=sim2
 	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0 --filenameprefix=sim3
 	@uv run python3 src/gami_tree_reproduce/data/simulation.py size=50000 cor=0.5 --filenameprefix=sim4
 
-.PHONY: clear_sim_data
 clear_sim_data:
 	@find data -maxdepth 1 -type f -name "sim*" -delete
-	@rm assets/conf/data -rf
+	@rm -rf data
+	@echo "removed simulation data"
 
+clear_data: clear_sim_data 
 
+training_r:
+	@uv run python3 src/gami_tree_reproduce/training_r.py
+	@echo "regression training completed"
 
-.PHONY: openml
-openml:
-	@uv run src/gami_tree_reproduce/data_openml.py
+training_c:
+	@uv run python3 src/gami_tree_reproduce/training_c.py
+	@echo "classification training completed"
 
-.PHONY: clear_openml_data
-clear_openml:
-	@find data -maxdepth 1 -type f ! -name "sim*" -delete
+clear_training:
+	@rm -rf src/gami_tree_reproduce/cache
+	@echo "removed all cache files"
 
+figure_r:
+	@uv run python3 src/gami_tree_reproduce/figure_r.py
+	@echo "regression figures generated"
 
-.PHONY: clear_data
-clear_data: clear_sim_data clear_openml_data
+figure_c:
+	@uv run python3 src/gami_tree_reproduce/figure_c.py
+	@echo "classification figures generated"
 
+figures: figure_r figure_c
 
-run_simulation:
-	@uv run src/gami_tree_reproduce/main.py
+clear_figures:
+	@rm -rf figures_regression
+	@rm -rf figures_classification
+	@echo "removed all figure folders"
 
-clear_runs:
-	@rm assets/simulation_runs -rf
-	@echo "🧹 remove asets/simulation_runs/"
-
-# Alias:
-clear: clean
+clear: clear_data clear_figures

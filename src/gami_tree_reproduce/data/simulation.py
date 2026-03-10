@@ -15,11 +15,9 @@ from gami_tree_reproduce.data.utils import (
 
 ROOT = Path.cwd()
 DATA = ROOT / "data"
-ASSET = ROOT / "assets" / "conf" / "data"
-SIMULATION_CONF = ROOT / "conf" / "data" / "simulation.yaml"
+SIMULATION_CONF = ROOT / "src" / "gami_tree_reproduce" / "data" / "simulation.yaml"
 
 DATA.mkdir(exist_ok=True, parents=True)
-ASSET.mkdir(exist_ok=True, parents=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--filenameprefix", type=str, default="")
@@ -112,4 +110,4 @@ for stem, df in (
 ):
     fname = out_name(stem)
     df.to_parquet(DATA / fname)
-    df.to_parquet(ASSET / fname)
+

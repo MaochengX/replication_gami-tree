@@ -1,7 +1,0 @@
-bike:
-  openml_id: 44017
-  target: count
-
-loan:
-  openml_id: 46561
-  target: sequence_number

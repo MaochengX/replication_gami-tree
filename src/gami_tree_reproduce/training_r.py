@@ -12,7 +12,6 @@ from src.gami_tree_reproduce.model.gamitree import GAMITree
 ROOT = Path.cwd()
 CACHE_DIR = ROOT / "src" / "gami_tree_reproduce" / "cache"
 
-
 def ts() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
 

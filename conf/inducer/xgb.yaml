@@ -1,4 +1,0 @@
-parameters:
-  tune:
-    - max_depth
-    - learning_rate
