@@ -101,10 +101,10 @@ def get_gaminet_importance(gaminet_model) -> pd.DataFrame:
 
 def get_ebm_effects(ebm_model) -> pd.DataFrame:
     """
-    _Generate dataframe with information on calculated scores/effects
+    _Generate dataframe with information on calculated effects
 
-    For each feature, say X1 or X1&X2(interaction) the frame consists of input (grid values where effects are estimated on)
-    and scores (grid values with estimated effects). For interactions scores will be a matrix which is stores as list of lists
+    For each feature, say X1 or X1&X2(interaction) the frame consists of input-grids (grid values where effects are estimated on)
+    and effects (grid values with estimated effects). For interactions effects will be a matrix which is stores as list of lists
 
     Args:
         ebm_model : ebm_model from pytorch Gaminet version as stored in model-wrapper._model
@@ -112,70 +112,86 @@ def get_ebm_effects(ebm_model) -> pd.DataFrame:
     Returns: pd.DataFrame
         feature_name:	|<feature_name1>|<feature_name2>|...
         ----------------|---------------|---------------|...
-        input:		    | [values]	    | [<values>]	|...
-        scores:		    | [values]	    | [<values>]	|...
+        grid:		    | [values]	    | [<values>]	|...
+        effect:		    | [values]	    | [<values>]	|...
     """
-    terms = ebm_model.term_features_
-    idx_single = [idx for idx, tupl in enumerate(terms) if len(tupl) == 1]
-    idx_double = [idx for idx, tupl in enumerate(terms) if len(tupl) == 2]
+    single_bounds = ebm_model.feature_bounds_.tolist()
+    features = ebm_model.term_features_
 
-    double_features = [
-        term for term in terms if len(term) == 2
-    ]  # for interaction effects, [(0,3), (1,2), ...]
+    main_effect_grid_len = int(ebm_model.max_bins)
+    interaction_effect_grid_len = int(ebm_model.max_interaction_bins)
 
-    scores = ebm_model.term_scores_
-    single_scores = [scores[idx].tolist() for idx in idx_single]
-    single_scores_dict = {
-        "X" + str(idx + 1): score for idx, score in enumerate(single_scores)
-    }
-
-    double_scores = [scores[idx].tolist() for idx in idx_double]
-    double_scores_dict = {
-        "X" + str(tupl[0] + 1) + "&" + "X" + str(tupl[1] + 1): scores
-        for tupl, scores in zip(double_features, double_scores, strict=True)
-    }
-
-    max_bins = int(ebm_model.max_bins)
-    single_input = [
-        np.linspace(lower, upper, max_bins).tolist()
-        for lower, upper in ebm_model.feature_bounds_
+    main_effects_grids = [
+        np.linspace(lst[0], lst[1], main_effect_grid_len) for lst in single_bounds
     ]
-    single_input_dict = {
-        "X" + str(idx + 1): element for idx, element in enumerate(single_input)
-    }
-    double_input_dict = {
-        "X" + str(tupl[0] + 1) + "&" + "X" + str(tupl[1] + 1): [
-            single_input[tupl[0]],
-            single_input[tupl[1]],
+    interaction_effects_grids_per_feature = [
+        np.linspace(lst[0], lst[1], interaction_effect_grid_len)
+        for lst in single_bounds
+    ]  # cannot use from main effect since different grid granularity
+
+    main_effects_name = ["X" + str(tupl[0] + 1) for tupl in features if len(tupl) == 1]
+    interaction_effects_name = [
+        "X" + str(tupl[0] + 1) + "&X" + str(tupl[1] + 1)
+        for tupl in features
+        if len(tupl) == 2
+    ]
+
+    interaction_effects_grids = [
+        [
+            interaction_effects_grids_per_feature[tupl[0]],
+            interaction_effects_grids_per_feature[tupl[1]],
         ]
-        for tupl in double_features
-    }
+        for tupl in features
+        if len(tupl) == 2
+    ]
+    main_effects = [
+        score_array for score_array in ebm_model.term_scores_ if score_array.ndim == 1
+    ]
+    interaction_effect = [
+        score_array.tolist()
+        for score_array in ebm_model.term_scores_
+        if score_array.ndim == 2
+    ]
 
-    single_dict = {
-        feature: {
-            "inputs": single_input_dict[feature],
-            "scores": single_scores_dict[feature],
-        }
-        for feature in single_input_dict
-    }
-    double_dict = {
-        feature: {
-            "inputs": double_input_dict[feature],
-            "scores": double_scores_dict[feature],
-        }
-        for feature in double_scores_dict
-    }
-    total = single_dict | double_dict
+    assert (
+        len(main_effects_grids)
+        == len(main_effects)
+        == len(main_effects_name)
+        == ebm_model.n_features_in_
+    )
+    assert (
+        len(interaction_effects_grids)
+        == len(interaction_effect)
+        == len(interaction_effects_name)
+        == ebm_model.interactions
+    )
 
-    return pd.DataFrame({"feature": key, **value} for key, value in total.items())
+    # convert to list of lists
+    main_effects_grids = [grid_arr.tolist() for grid_arr in main_effects_grids]
+    main_effects_grids = [[elem] for elem in main_effects_grids]
+    interaction_effects_grids = [
+        [gridlist[0].tolist(), gridlist[1].tolist()]
+        for gridlist in interaction_effects_grids
+    ]
+
+    main_effects = [grid_arr.tolist() for grid_arr in main_effects]
+    main_effects = [[elem] for elem in main_effects]
+
+    return pd.DataFrame(
+        {
+            "feature": main_effects_name + interaction_effects_name,
+            "grid": main_effects_grids + interaction_effects_grids,
+            "effect": main_effects + interaction_effect,
+        }
+    )
 
 
 def get_gaminet_effect(gaminet_model) -> pd.DataFrame:
     """
-    _Generate dataframe with information on calculated scores/effects
+    _Generate dataframe with information on calculated  effects
 
-    For each feature, say X1 or X1&X2(interaction) the frame consists of input (grid values where effects are estimated on)
-    and scores (grid values with estimated effects). For interactions scores will be a matrix which is stores as list of lists
+    For each feature, say X1 or X1&X2(interaction) the frame consists of input-grid (grid values where effects are estimated on)
+    and effects (grid values with estimated effects). For interactions effects will be a matrix which is stores as list of lists
 
     Args:
         gaminet_model : gaminet_model from pytorch Gaminet version as stored in model-wrapper._model
@@ -183,42 +199,56 @@ def get_gaminet_effect(gaminet_model) -> pd.DataFrame:
     Returns: pd.DataFrame
         feature_name:	|<feature_name1>|<feature_name2>|...
         ----------------|---------------|---------------|...
-        input:		    | [values]	    | [<values>]	|...
-        scores:		    | [values]	    | [<values>]	|...
+        grid:		    | [values]	    | [<values>]	|...
+        effect:		    | [values]	    | [<values>]	|...
     """
 
     global_dict = gaminet_model.data_dict_global_
-
-    single_features = {
-        feature: entry for feature, entry in global_dict.items() if "inputs" in entry
+    interaction_dict = {
+        key: value for key, value in global_dict.items() if " x " in key
     }
-    single_features = {
-        feature: {
-            "inputs": single_features[feature]["inputs"].tolist(),
-            "scores": single_features[feature]["outputs"].tolist(),
+    main_dict = {key: value for key, value in global_dict.items() if " x " not in key}
+
+    main_effects_names = list(main_dict)
+    interaction_effects_names = list(interaction_dict)
+
+    main_effects_grids = [value["inputs"].tolist() for value in main_dict.values()]
+    interaction_effects_grids = [
+        [value["input1"].flatten().tolist(), value["input2"].flatten().tolist()]
+        for value in interaction_dict.values()
+    ]
+
+    main_effects = [value["outputs"].tolist() for value in main_dict.values()]
+    interaction_effects = [
+        value["outputs"].tolist() for value in interaction_dict.values()
+    ]
+
+    assert (
+        len(main_effects_grids)
+        == len(main_effects_names)
+        == len(main_effects)
+        == gaminet_model.nfeature_num_
+    )
+    assert (
+        len(interaction_effects_grids)
+        == len(interaction_effects_names)
+        == len(interaction_effects)
+        == gaminet_model.n_interactions_
+    )
+
+    # convert to list of lists
+    # = [[elem] for elem in main_effects]
+    main_effects_grids = [[elem] for elem in main_effects_grids]
+    main_effects = [[elem] for elem in main_effects]
+
+    return pd.DataFrame(
+        {
+            "feature": main_effects_names
+            + [name.replace(" x ", "&") for name in interaction_effects_names],
+            "grid": main_effects_grids + interaction_effects_grids,
+            "effect": main_effects + interaction_effects,
         }
-        for feature in single_features
-    }
-
-    ## entries in outputs is a matrix where row/column values correspond to input1/2 values
-    double_features = {
-        feature.replace(" x ", "&"): entry
-        for feature, entry in global_dict.items()
-        if "input1" in entry
-    }
-    double_features = {
-        feature: {
-            "inputs": [
-                double_features[feature]["input1"].flatten().tolist(),
-                double_features[feature]["input2"].flatten().tolist(),
-            ],
-            "scores": [double_features[feature]["outputs"].tolist()],
-        }
-        for feature in double_features
-    }
-    total = single_features | double_features
-
-    return pd.DataFrame({"feature": key, **value} for key, value in total.items())
+    )
 
 
 # generate data
@@ -233,12 +263,7 @@ for experiment in experiments:
         df_importance.to_parquet(
             Path(assets_ebm_importance, data_name).with_suffix(".pq")
         )
-        df_effects[df_effects["feature"].str.contains("&")].to_parquet(
-            Path(assets_ebm_effect, data_name + "_interact").with_suffix(".pq")
-        )
-        df_effects[~df_effects["feature"].str.contains("&")].to_parquet(
-            Path(assets_ebm_effect, data_name + "_main").with_suffix(".pq")
-        )
+        df_effects.to_parquet(Path(assets_ebm_effect, data_name).with_suffix(".pq"))
 
     elif inducer_name == "gaminet":
         df_importance = get_gaminet_importance(model._model)
@@ -246,9 +271,4 @@ for experiment in experiments:
         df_importance.to_parquet(
             Path(assets_gaminet_importance, data_name).with_suffix(".pq")
         )
-        df_effects[df_effects["feature"].str.contains("&")].to_parquet(
-            Path(assets_gaminet_effect, data_name + "_interact").with_suffix(".pq")
-        )
-        df_effects[~df_effects["feature"].str.contains("&")].to_parquet(
-            Path(assets_gaminet_effect, data_name + "_main").with_suffix(".pq")
-        )
+        df_effects.to_parquet(Path(assets_gaminet_effect, data_name).with_suffix(".pq"))
