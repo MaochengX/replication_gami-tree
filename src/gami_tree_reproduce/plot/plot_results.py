@@ -106,10 +106,7 @@ for path in ebm_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(
-            plots_importance_ebm,
-            "ebm_main_" + path.stem + "_" + subtitle.replace(", ", "_"),
-        ).with_suffix(".png"),
+        Path(plots_importance_ebm, "ebm_main_" + path.stem).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -119,10 +116,7 @@ for path in ebm_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(
-            plots_importance_ebm,
-            "ebm_interact_" + path.stem + "_" + subtitle.replace(", ", "_"),
-        ).with_suffix(".png"),
+        Path(plots_importance_ebm, "ebm_interact_" + path.stem).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -142,10 +136,7 @@ for path in gaminet_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(
-            plots_importance_gaminet,
-            "gaminet_main_" + path.stem + subtitle.replace(", ", "_"),
-        ).with_suffix(".png"),
+        Path(plots_importance_gaminet, "gaminet_main_" + path.stem).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -155,10 +146,9 @@ for path in gaminet_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(
-            plots_importance_gaminet,
-            "gaminet_interact_" + path.stem + subtitle.replace(", ", "_"),
-        ).with_suffix(".png"),
+        Path(plots_importance_gaminet, "gaminet_interact_" + path.stem).with_suffix(
+            ".png"
+        ),
         dpi=300,
     )
     plt.close()
@@ -261,7 +251,7 @@ for path in gaminet_effects + ebm_effects:
 
     samplesize = format_k(samplesize)
     subtitle = f"corr={corr}, n={samplesize}"
-    folder_name = path.stem + "_" + subtitle
+    folder_name = path.stem  #  + "_" + subtitle
     if inducer_name == "gaminet":
         plot_folder = Path(plots_effects_gaminet, folder_name.replace(", ", "_"))
     elif inducer_name == "ebm":
