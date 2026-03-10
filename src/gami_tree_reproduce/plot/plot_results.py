@@ -172,7 +172,7 @@ plots_effects_gaminet.mkdir(parents=True, exist_ok=True)
 
 def get_metadata(foldername: str) -> tuple:
     with (
-        Path(project_paths["assets_conf_data"], foldername.split("_")[0])
+        Path(project_paths["assets_conf_data"], foldername.split("_", maxsplit=1)[0])
         .with_suffix(".yaml")
         .open() as f
     ):

@@ -65,7 +65,7 @@ def get_ebm_importance(ebm_model) -> pd.DataFrame:
             "X" + str(int(string.replace("feature_", "")) + 1) for string in string_list
         ]
     )
-    splits = splits.apply(lambda lst: "&".join(lst))
+    splits = splits.apply("&".join)
 
     ebm_importance.loc[:, "names"] = splits
     ebm_importance = ebm_importance.drop("type", axis=1)
