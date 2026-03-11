@@ -1,0 +1,63 @@
+hpo_settings:
+  learning_rate:
+    grid:
+    - 0.01
+    - 0.05
+    - 0.1
+    - 0.2
+    method: grid
+  max_depth:
+    grid:
+    - 1
+    - 4
+    - 8
+    - 10
+    - 15
+    method: grid
+loss_test: 2.7760356558925583
+loss_train: 0.00050568842787067
+params:
+  base_score: null
+  booster: null
+  callbacks: null
+  colsample_bylevel: null
+  colsample_bynode: null
+  colsample_bytree: null
+  device: null
+  early_stopping_rounds: null
+  enable_categorical: false
+  eval_metric: null
+  feature_types: null
+  feature_weights: null
+  gamma: null
+  grow_policy: null
+  importance_type: null
+  interaction_constraints: null
+  learning_rate: 0.2
+  max_bin: null
+  max_cat_threshold: null
+  max_cat_to_onehot: null
+  max_delta_step: null
+  max_depth: 15
+  max_leaves: null
+  min_child_weight: null
+  missing: .nan
+  monotone_constraints: null
+  multi_strategy: null
+  n_estimators: null
+  n_jobs: null
+  num_parallel_tree: null
+  objective: reg:squarederror
+  random_state: null
+  reg_alpha: null
+  reg_lambda: null
+  sampling_method: null
+  scale_pos_weight: null
+  subsample: null
+  tree_method: null
+  validate_parameters: null
+  verbosity: null
+time_predict: 0.004918
+'time_predict_perf:': 0.004913863998808665
+time_train: 1.078163
+time_train_perf: 1.0781581490009557

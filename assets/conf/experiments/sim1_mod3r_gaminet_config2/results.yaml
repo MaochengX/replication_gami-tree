@@ -1,0 +1,48 @@
+hpo_settings: {}
+loss_test: 0.5913969675204134
+loss_train: null
+params:
+  activation_func: ReLU
+  batch_size: 100
+  batch_size_inference: 10000
+  boundary_clip: true
+  device: cpu
+  early_stop_thres:
+  - auto
+  - auto
+  - auto
+  gam_sample_size: 5000
+  heredity: true
+  interact_num: 20
+  learning_rates:
+  - 0.001
+  - 0.001
+  - 0.0001
+  loss_threshold: 0.0
+  max_epochs:
+  - 1000
+  - 1000
+  - 1000
+  max_iter_per_epoch: 100
+  meta_info: null
+  mlp_sample_size: 1000
+  mono_decreasing_list: []
+  mono_increasing_list: []
+  mono_sample_size: 1000
+  n_jobs: 10
+  normalize: true
+  random_state: 0
+  reg_clarity: 0.1
+  reg_mono: 0.1
+  subnet_size_interaction:
+  - 20
+  - 20
+  subnet_size_main_effect:
+  - 20
+  val_ratio: 0.2
+  verbose: false
+  warm_start: true
+time_predict: 0.001911
+'time_predict_perf:': 0.0019104679995507468
+time_train: 30.221087
+time_train_perf: 30.22108085600121

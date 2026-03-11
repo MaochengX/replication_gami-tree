@@ -1,0 +1,67 @@
+hpo_settings:
+  learning_rate:
+    grid:
+    - 0.0025
+    - 0.005
+    - 0.01
+    - 0.015
+    - 0.02
+    - 0.03
+    - 0.04
+    - 0.05
+    - 0.1
+    - 0.2
+    method: grid
+  max_bins:
+    distribution: integers
+    method: random
+    params:
+      high: 1066
+      low: 992
+      size: 12
+  max_interaction_bins:
+    distribution: integers
+    method: random
+    params:
+      high: 76
+      low: 52
+      size: 12
+loss_test: 0.3218866238628821
+loss_train: 0.12417144940989458
+params:
+  callback: null
+  cat_smooth: 10.0
+  cyclic_progress: false
+  early_stopping_rounds: 100
+  early_stopping_tolerance: 1.0e-05
+  exclude: null
+  feature_names: null
+  feature_types: null
+  gain_scale: 5.0
+  greedy_ratio: 10.0
+  inner_bags: 0
+  interaction_smoothing_rounds: 100
+  interactions: 60
+  learning_rate: 0.2
+  max_bins: 1003
+  max_delta_step: 0.0
+  max_interaction_bins: 67
+  max_leaves: 2
+  max_rounds: 50000
+  min_cat_samples: 10
+  min_hessian: 0.0
+  min_samples_leaf: 4
+  missing: separate
+  monotone_constraints: null
+  n_jobs: -2
+  objective: rmse
+  outer_bags: 14
+  random_state: 42
+  reg_alpha: 0.0
+  reg_lambda: 0.0
+  smoothing_rounds: 500
+  validation_size: 0.15
+time_predict: 0.002492
+time_predict_perf: 0.002491377992555499
+time_train: 15.045014
+time_train_perf: 15.045013153008767

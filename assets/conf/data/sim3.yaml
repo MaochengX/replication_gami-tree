@@ -1,0 +1,29 @@
+SEED: 455
+cor: 0.5
+size: 5000
+var: 1
+x1_covariates: 20
+x1_generator:
+  name: multivariate_normal
+  params:
+    cov: '${equicov: ${x1_covariates}, ${cor}, ${var}}'
+    mean: ${np:full, ${x1_covariates}, 0}
+    size: ${size}
+x2_covariates: 10
+x2_generator:
+  name: multivariate_normal
+  params:
+    cov: '${equicov: ${x2_covariates}, ${cor}, ${var}}'
+    mean: ${np:full, ${x2_covariates}, 0}
+    size: ${size}
+y_generator_c:
+  name: binomial
+  params:
+    n: 1
+    size: ${size}
+y_generator_r:
+  name: normal
+  params:
+    loc: 0
+    scale: 0.5
+    size: ${size}
