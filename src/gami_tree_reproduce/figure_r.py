@@ -201,7 +201,7 @@ def main() -> None:
             model,
             X_fit,
             x_cols,
-            fig_dir / "main_importance.png",
+            fig_dir / f"{tag}_main_importance.png",
             main_title,
         )
 
@@ -209,7 +209,7 @@ def main() -> None:
             model,
             X_fit,
             x_cols,
-            fig_dir / "interaction_importance.png",
+            fig_dir / f"{tag}_interaction_importance.png",
             inter_title,
         )
 
@@ -219,7 +219,7 @@ def main() -> None:
                 X_fit,
                 x_cols,
                 xname,
-                fig_dir / f"main_effect_{xname}.png",
+                fig_dir / f"{tag}_main_effect_{xname}.png",
                 title=None,
             )
 
@@ -230,7 +230,7 @@ def main() -> None:
                 x_cols,
                 a,
                 b,
-                fig_dir / f"interaction_{x_cols[a]}_{x_cols[b]}.png",
+                fig_dir / f"{tag}_interaction_{x_cols[a]}_{x_cols[b]}.png",
                 n_slices=7,
                 title=slice_title,
                 swap_axes=True,
