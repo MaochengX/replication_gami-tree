@@ -4,12 +4,37 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from pandas.api.types import is_numeric_dtype
 from sklearn.preprocessing import MinMaxScaler
 
 project_root = Path(__file__).resolve().parents[2]
 os.environ.setdefault("PROJECT_ROOT", str(project_root))
+
+
+gaminet_tuple_arguments = [
+    "max_epochs",
+    "subnet_size_main_effect",
+    "learning_rates",
+    "subnet_size_interaction",
+]
+
+
+def adjust_gaminet_dict_for_tuple(gaminet_dict: dict) -> dict:
+    for key in gaminet_tuple_arguments:
+        if key in gaminet_dict:
+            gaminet_dict[key] = list_to_tuples(gaminet_dict[key])
+    return gaminet_dict
+
+
+def list_to_tuples(list_of_lists: list) -> list:
+    lst = []
+    for _, element in enumerate(list_of_lists):
+        if isinstance(element, (list | ListConfig)):
+            lst.append(tuple(element))
+        else:
+            lst.append(element)
+    return lst
 
 
 def get_project_paths(

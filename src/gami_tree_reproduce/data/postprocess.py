@@ -255,20 +255,21 @@ def get_gaminet_effect(gaminet_model) -> pd.DataFrame:
 for experiment in experiments:
     ## read model and get feature importance data
     model = joblib.load(Path(experiment, "model.gz"))
-    data_name, inducer_name, data_config = get_metadata(experiment.stem)
-
+    # data_name, inducer_name, data_config = get_metadata(experiment.stem)
+    simulation_data, response_model, inducer_name, config = experiment.stem.split("_")
+    filename = simulation_data + "_" + response_model + "_" + config
     if inducer_name == "ebm":
         df_importance = get_ebm_importance(model._model)
         df_effects = get_ebm_effects(model._model)
         df_importance.to_parquet(
-            Path(assets_ebm_importance, data_name).with_suffix(".pq")
+            Path(assets_ebm_importance, filename).with_suffix(".pq")
         )
-        df_effects.to_parquet(Path(assets_ebm_effect, data_name).with_suffix(".pq"))
+        df_effects.to_parquet(Path(assets_ebm_effect, filename).with_suffix(".pq"))
 
     elif inducer_name == "gaminet":
         df_importance = get_gaminet_importance(model._model)
         df_effects = get_gaminet_effect(model._model)
         df_importance.to_parquet(
-            Path(assets_gaminet_importance, data_name).with_suffix(".pq")
+            Path(assets_gaminet_importance, filename).with_suffix(".pq")
         )
-        df_effects.to_parquet(Path(assets_gaminet_effect, data_name).with_suffix(".pq"))
+        df_effects.to_parquet(Path(assets_gaminet_effect, filename).with_suffix(".pq"))

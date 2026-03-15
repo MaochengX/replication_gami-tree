@@ -14,13 +14,29 @@ from gami_tree_reproduce.data.preprocess_utils import (
 from gami_tree_reproduce.log import LogMediator
 from gami_tree_reproduce.model.inducers import get_inducer_class
 from gami_tree_reproduce.model.params import get_parameter_class
-from gami_tree_reproduce.utils import config_to_grid, get_project_paths
+from gami_tree_reproduce.utils import (
+    config_to_grid,
+    get_project_paths,
+)
 
 project_paths = get_project_paths()
 config = Path(oenv["PROJECT_ROOT"])
 config = OmegaConf.load(Path("conf/config.yaml"))
 OmegaConf.resolve(config)
 seed = config.seed
+
+
+def no_retrain(configurations: list, path_to_experiments: Path) -> list:
+    """
+    Filter the configurations list by exluding configurations that are present in path_to_experiments
+
+    Args:
+        configurations (list): _description_
+        path_to_experiments (Path): _description_
+
+    Returns:
+        list: _description_
+    """
 
 
 def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
@@ -40,6 +56,8 @@ def get_inducer_dictionary_grid(inducers: list[Path]) -> dict:
     for inducer_yaml in inducers:
         inducer_name = inducer_yaml.stem
         inducer_cfg = OmegaConf.load(inducer_yaml)
+        # if inducer_name == "gaminet":
+        # inducer_cfg = adjust_gaminet_dict_for_tuple(inducer_cfg)
         inducer_grid = config_to_grid(inducer_cfg)
         total_grid[inducer_name] = inducer_grid
 
@@ -65,9 +83,8 @@ for dataset_folder in dataset_folders:
         task = "regression"
 
     for inducer_name in inducers_dictionary_grid:
-        if inducer_name != "gaminet":
+        if inducer_name != "ebm":
             continue
-
         configurations = inducers_dictionary_grid[inducer_name]
         for experiment_count, current_configuration in enumerate(configurations):
             # location for results
@@ -97,4 +114,4 @@ for dataset_folder in dataset_folders:
 
             log.train(inducer, X_train, y_train)
             log.predict(inducer, X_test, y_test)
-            log.log(path_results, inducer)
+            log.log(path_results, inducer, current_configuration)
