@@ -14,8 +14,9 @@ NCOL = 4
 FSIZE = (16, 17)
 SUBPLOT_W = 4
 SUBPLOT_H = 3
-plt.rcParams["xtick.labelsize"] = 12
-plt.rcParams["ytick.labelsize"] = 12
+plt.rcParams["axes.titlesize"] = 10
+plt.rcParams["xtick.labelsize"] = 8
+plt.rcParams["ytick.labelsize"] = 8
 project_paths = get_project_paths()
 
 ebm_effects = list(Path(project_paths["assets_effects"], "ebm").glob("*.pq"))
@@ -44,6 +45,18 @@ def plot_topk_importance(df_importance: pd.DataFrame, ax=None, k: int = 15) -> t
     return fig, ax
 
 
+def save_importance(data_path_list: list[Path], full_out_path: Path) -> None:
+    nrow = math.ceil(len(ebm_importance) / NCOL)
+    fig, axes = plt.subplots(nrow, NCOL, figsize=FSIZE)
+    axes = axes.flatten()
+    for i, df_path in enumerate(data_path_list):
+        df_importance = pd.read_parquet(df_path)
+        ax = axes[i]
+        plot_topk_importance(df_importance, ax=ax)
+    fig.savefig(str(full_out_path), dpi=300)
+    plt.close()
+
+
 plots_importance_ebm = Path(project_paths["assets_plots_importance"], "ebm")
 plots_importance_gaminet = Path(project_paths["assets_plots_importance"], "gaminet")
 
@@ -51,10 +64,24 @@ plots_importance_ebm.mkdir(exist_ok=True, parents=True)
 plots_importance_gaminet.mkdir(exist_ok=True, parents=True)
 
 
-def get_simdata_conf(config_name):
-    conf = Path(project_paths["assets_conf_data"], config_name).with_suffix(".yaml")
+def get_metadata(simulation_data_name: str):
+    data_name, response_model = simulation_data_name.split("_")
+    conf = Path(project_paths["assets_conf_data"], data_name).with_suffix(".yaml")
     with conf.open() as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+
+    sample_size = config["size"]
+    correlation = config["cor"]
+    task = response_model[4]
+    task = "Regression" if task == "r" else "Classififcation"
+    model_number = response_model[3]
+
+    return (
+        model_number,
+        task,
+        sample_size,
+        correlation,
+    )
 
 
 def format_k(n):
@@ -67,25 +94,22 @@ def format_k(n):
 #            Importance plots
 # -----------------------------
 for path in ebm_importance:
-    # model_number, task, sample_size, correlation = get_metadata(path.stem)
-    simdata, mod_task, conf = path.stem.split("_")
-    model_number = mod_task[3]
-    task = "regression" if mod_task[-1] == "r" else "classification"
-    config = get_simdata_conf(simdata)
-    sample_size = config["size"]
+    model_number, task, sample_size, correlation = get_metadata(path.stem)
     sample_size = format_k(sample_size)
-    correlation = config["cor"]
-
     df_importance = pd.read_parquet(path)
     interaction_importance = df_importance[df_importance["feature"].str.contains("&")]
     main_importance = df_importance[~df_importance["feature"].str.contains("&")]
+
     fig, ax = plot_topk_importance(main_importance)
     title = f"Importance main effect (Model {model_number}, ebm)"
     subtitle = f"corr={correlation}, n={sample_size}"
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(plots_importance_ebm, "ebm_main_" + path.stem).with_suffix(".png"),
+        Path(
+            plots_importance_ebm,
+            "ebm_main_" + path.stem + "_" + subtitle.replace(", ", "_"),
+        ).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -95,21 +119,18 @@ for path in ebm_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(plots_importance_ebm, "ebm_interact_" + path.stem).with_suffix(".png"),
+        Path(
+            plots_importance_ebm,
+            "ebm_interact_" + path.stem + "_" + subtitle.replace(", ", "_"),
+        ).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
 
 
 for path in gaminet_importance:
-    # model_number, task, sample_size, correlation = get_metadata(path.stem)
-    simdata, mod_task, conf = path.stem.split("_")
-    model_number = mod_task[3]
-    task = "regression" if mod_task[-1] == "r" else "classification"
-    config = get_simdata_conf(simdata)
-    sample_size = config["size"]
+    model_number, task, sample_size, correlation = get_metadata(path.stem)
     sample_size = format_k(sample_size)
-    correlation = config["cor"]
     df_importance = pd.read_parquet(path)
     interaction_importance = df_importance[df_importance["feature"].str.contains("&")]
     main_importance = df_importance[~df_importance["feature"].str.contains("&")]
@@ -121,7 +142,10 @@ for path in gaminet_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(plots_importance_gaminet, "gaminet_main_" + path.stem).with_suffix(".png"),
+        Path(
+            plots_importance_gaminet,
+            "gaminet_main_" + path.stem + subtitle.replace(", ", "_"),
+        ).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -131,9 +155,10 @@ for path in gaminet_importance:
     ax.set_title(subtitle)
     fig.suptitle(title)
     fig.savefig(
-        Path(plots_importance_gaminet, "gaminet_interact_" + path.stem).with_suffix(
-            ".png"
-        ),
+        Path(
+            plots_importance_gaminet,
+            "gaminet_interact_" + path.stem + subtitle.replace(", ", "_"),
+        ).with_suffix(".png"),
         dpi=300,
     )
     plt.close()
@@ -143,6 +168,22 @@ plots_effects_ebm = Path(project_paths["assets_plots_effects"], "ebm")
 plots_effects_ebm.mkdir(parents=True, exist_ok=True)
 plots_effects_gaminet = Path(project_paths["assets_plots_effects"], "gaminet")
 plots_effects_gaminet.mkdir(parents=True, exist_ok=True)
+
+
+def get_metadata(foldername: str) -> tuple:
+    with (
+        Path(project_paths["assets_conf_data"], foldername.split("_", maxsplit=1)[0])
+        .with_suffix(".yaml")
+        .open() as f
+    ):
+        data_config = yaml.safe_load(f)
+
+    correlation = data_config["cor"]
+    samplesize = data_config["size"]
+    task = "Regression" if foldername[-1] == "r" else "Classificarion"
+    model_number = foldername[-2]
+
+    return correlation, samplesize, model_number, task
 
 
 def plot_interaction_effect(df_effects_row, ax=None):
@@ -186,8 +227,7 @@ def plot_main_effect(df_effects_row, ax=None):
     effect = df_effects_row["effect"].iloc[0][0]
     effect = effect[1:-1]
     ax.plot(grid, effect)
-    ax.set_xlabel(feature_name)
-    ax.set_ylabel(f"f({feature_name})")
+    ax.set_ylabel(feature_name)
 
     return fig, ax
 
@@ -212,21 +252,16 @@ for path in gaminet_effects + ebm_effects:
     # ---------------------------------------------
     # general setup
     # --------------------------------------------
-    simdata, mod_task, conf = path.stem.split("_")
-    model_number = mod_task[3]
-    task = "regression" if mod_task[-1] == "r" else "classification"
-    config = get_simdata_conf(simdata)
-    sample_size = config["size"]
-    sample_size = format_k(sample_size)
-    correlation = config["cor"]
     inducer_name = path.parent.name
     df_effect = pd.read_parquet(path)
     df_effect = remove_no_effects(df_effect)
     df_interaction_effects = df_effect[df_effect["feature"].str.contains("&")]
     df_main_effects = df_effect[~df_effect["feature"].str.contains("&")]
+    corr, samplesize, model_number, task = get_metadata(path.stem)
 
-    subtitle = f"corr={correlation}, n={sample_size}"
-    folder_name = path.stem  #  + "_" + subtitle
+    samplesize = format_k(samplesize)
+    subtitle = f"corr={corr}, n={samplesize}"
+    folder_name = path.stem + "_" + subtitle
     if inducer_name == "gaminet":
         plot_folder = Path(plots_effects_gaminet, folder_name.replace(", ", "_"))
     elif inducer_name == "ebm":
