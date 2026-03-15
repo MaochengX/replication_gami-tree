@@ -84,7 +84,9 @@ class LogMediator:
         self._time_hpo = self.timedelta_to_minute(end_hpo - start_hpo)
         self._time_hpo_perf = end_hpo_perf - start_hpo_perf
 
-    def log(self, destination_folder: Path, inducer: BaseInducer) -> None:
+    def log(
+        self, destination_folder: Path, inducer: BaseInducer, user_config: dict
+    ) -> None:
         destination_folder.mkdir(exist_ok=True, parents=True)
 
         total_config = {}
@@ -103,11 +105,11 @@ class LogMediator:
                 "time_predict_perf": self._time_predict_perf,
             }
         )
+        total_config.update({"user_conf": user_config})
 
-        with Path(destination_folder, "results.yaml").open("w") as f:
+        with Path(destination_folder, "total_conf.yaml").open("w") as f:
             total_config = npnum_to_pynum(total_config)
             yaml.safe_dump(total_config, f)
-
         joblib.dump(inducer, Path(destination_folder, "model.gz"))
 
     def is_numpy_format(self, X_train: Any, y_train: Any | None = None) -> bool:
