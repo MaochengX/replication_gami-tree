@@ -11,8 +11,8 @@ paths:
     data_raw: ${paths.folder.data}/raw
     data_preprocessed: ${paths.folder.data}/preprocessed
     assets: ${project_root}/assets
-    assets_importance: ${paths.folder.assets}/results/importance
-    assets_effects: ${paths.folder.assets}/results/effects
+    assets_importance: ${paths.folder.assets}/importance
+    assets_effects: ${paths.folder.assets}/effects
     assets_plots: ${paths.folder.assets}/plots
     assets_plots_importance: ${paths.folder.assets_plots}/importance
     assets_plots_effects: ${paths.folder.assets_plots}/effects
