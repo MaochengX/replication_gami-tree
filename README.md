@@ -35,7 +35,7 @@ $$
 
 $$
 \begin{aligned}
-g_2(x) &{}= \; \sum_{j=1}^{5} x_j
+g_2(x) &{}=  \sum_{j=1}^{5} x_j
            + \sum_{j=6}^{8} 0.5\,x_j^2
            + \sum_{j=9}^{10} x_j\,\mathbb{1}(x_j>0)
            + 0.25\,x_1x_2
@@ -51,9 +51,18 @@ $$
 
 $$
 \begin{aligned}
-g_3(\mathbf{x}) = \; & \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\, x_j^2 + \sum_{j=9}^{10} x_j \cdot \mathbf{1}(x_j > 0) \\
+g_3(\mathbf{x}) = & \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\, x_j^2 + \sum_{j=9}^{10} x_j \cdot \mathbf{1}(x_j > 0) \\
 &+ 0.25\, x_1^2 x_2^2 + 2(x_3 - 0.5)_+ (x_4 - 0.5)_+ \\
 &+ 0.5 \sin(\pi x_5)\sin(\pi x_6) + 0.5 \sin(\pi(x_7 + x_8))
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+g_4(\mathbf{x}) =  & \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\, x_j^2+ \\
+&+ \sum_{j=9}^{10} x_j \cdot \mathbf{1}(x_j > 0) + \\
+&+ x_1 x_2 + x_1 x_3 + x_2 x_3 + 0.5\, x_1 x_2 x_3 + \\
+&+ x_4 x_5 + x_4 x_6 + x_5 x_6 + 0.5\, \mathbf{1}(x_4 > 0)\, x_5 x_6
 \end{aligned}
 $$
 
