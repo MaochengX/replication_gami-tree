@@ -59,8 +59,7 @@ $$
 
 $$
 \begin{aligned}
-g_4(\mathbf{x}) =  & \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\, x_j^2+ \\
-&+ \sum_{j=9}^{10} x_j \cdot \mathbf{1}(x_j > 0) + \\
+g_4(\mathbf{x}) =  & \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\, x_j^2+ \sum_{j=9}^{10} x_j \cdot \mathbf{1}(x_j > 0) + \\
 &+ x_1 x_2 + x_1 x_3 + x_2 x_3 + 0.5\, x_1 x_2 x_3 + \\
 &+ x_4 x_5 + x_4 x_6 + x_5 x_6 + 0.5\, \mathbf{1}(x_4 > 0)\, x_5 x_6
 \end{aligned}
