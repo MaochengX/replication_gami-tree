@@ -38,7 +38,7 @@ g_1(x)
 $$
 
 $$
-\begin{algined}
+\begin{aligned}
 g_2(x) = \sum_{j=1}^{5} x_j + \\
   \sum_{j=6}^{8} 0.5\,x_j^2 + \\
   \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0) + \\
