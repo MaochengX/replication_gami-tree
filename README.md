@@ -57,6 +57,7 @@ g_4(x) = \sum_{j=1}^{5} x_j + \sum_{j=6}^{8} 0.5\,x_j^2 + \sum_{j=9}^{10} x_j \m
 \end{aligned}
 $$
 
+For each Response Model we observed the following Interaction Effects:
 <!----------------------------------------------------------------------------------------->
 ### $g_1$
 #### Interaction Effects ($\rho = 0, n=50K$)
@@ -74,12 +75,12 @@ The only interaction chosen by Gami-Net was for the variables $x_{10}$ and $x_{1
 #### Interaction Effects ($\rho = 0.5, n=50K$)
 ##### Gami-Net
 <p align="center">
-  <img src="assets/plots/effects/gaminet/sim4_mod4r_config1/interact_all.png" width="600">
+  <img src="assets/plots/effects/gaminet/sim4_mod1r_config1/interact_all.png" width="600">
 </p>
 
 ##### EBM
 <p align="center">
-  <img src="assets/plots/effects/ebm/sim4_mod4r_config1/interact_all.png" width="600">
+  <img src="assets/plots/effects/ebm/sim4_mod1r_config1/interact_all.png" width="600">
 </p>
 <!----------------------------------------------------------------------------------------->
 
