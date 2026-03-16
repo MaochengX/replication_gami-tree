@@ -44,17 +44,19 @@ g_2(x)
   + 0.25\,x_1x_2
   + 0.25\,x_1x_3^2
   + 0.25\,x_4^2x_5^2
-\nonumber\\
+\\
 &\quad
   + \exp(x_4x_6/3)
   + x_5x_6\,\mathbb{1}(x_5>0)\mathbb{1}(x_6>0)
   + \operatorname{clip}(x_7+x_8,-1,0)
-\nonumber\\
+\\
 &\quad
   + \operatorname{clip}(x_7x_9,-1,1)
   + \mathbb{1}(x_8>0)\mathbb{1}(x_9>0) .
 \end{aligned}
 $$
+
+
 <!----------------------------------------------------------------------------------------->
 ### $g_1$
 #### Interaction Effects ($\rho = 0, n=50K$)
