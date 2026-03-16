@@ -32,10 +32,10 @@ We consider the following response models proposed by [Hu et.al](https://arxiv.o
 ```{latex}
 $$
 g_1(x)
-&= \sum_{j=1}^{5} x_j
-  + \sum_{j=6}^{8} 0.5\,x_j^2
-  + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
-  + \sum_{j=1}^{10}\sum_{k=j+1}^{10} 0.2\,x_jx_k .
+ \sum_{j=1}^{5} x_j
+ \sum_{j=6}^{8} 0.5\,x_j^2
+ \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
+ \sum_{j=1}^{10}\sum_{k=j+1}^{10} 0.2\,x_jx_k .
 \\
 g_2(x)
 &= \sum_{j=1}^{5} x_j
