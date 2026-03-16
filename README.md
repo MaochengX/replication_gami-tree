@@ -43,7 +43,7 @@ g_2(x) = \sum_{j=1}^{5} x_j +
   \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0) +
   0.25\,x_1x_2 + 0.25\,x_1x_3^2 + 0.25\,x_4^2x_5^2 +
   \exp(x_4x_6/3)+ x_5x_6\,\mathbb{1}(x_5>0)\mathbb{1}(x_6>0)+
-  \operatorname{clip}(x_7+x_8,-1,0) + \operatorname{clip}(x_7x_9,-1,1)
+  \text{clip}(x_7+x_8,-1,0) + \text{clip}(x_7x_9,-1,1)
   \mathbb{1}(x_8>0)\mathbb{1}(x_9>0)
 $$
 
