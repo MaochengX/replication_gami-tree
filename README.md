@@ -33,53 +33,53 @@ $$
 \begin{align}
 g_1(x)
 &= \sum_{j=1}^{5} x_j
- + \sum_{j=6}^{8} 0.5\,x_j^2
- + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
- + \sum_{j=1}^{10}\sum_{k=j+1}^{10} 0.2\,x_jx_k .
+  + \sum_{j=6}^{8} 0.5\,x_j^2
+  + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
+  + \sum_{j=1}^{10}\sum_{k=j+1}^{10} 0.2\,x_jx_k .
 \\
 g_2(x)
 &= \sum_{j=1}^{5} x_j
- + \sum_{j=6}^{8} 0.5\,x_j^2
- + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
- + 0.25\,x_1x_2
- + 0.25\,x_1x_3^2
- + 0.25\,x_4^2x_5^2
+  + \sum_{j=6}^{8} 0.5\,x_j^2
+  + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
+  + 0.25\,x_1x_2
+  + 0.25\,x_1x_3^2
+  + 0.25\,x_4^2x_5^2
 \nonumber\\
 &\quad
- + \exp(x_4x_6/3)
- + x_5x_6\,\mathbb{1}(x_5>0)\mathbb{1}(x_6>0)
- + \operatorname{clip}(x_7+x_8,-1,0)
+  + \exp(x_4x_6/3)
+  + x_5x_6\,\mathbb{1}(x_5>0)\mathbb{1}(x_6>0)
+  + \operatorname{clip}(x_7+x_8,-1,0)
 \nonumber\\
 &\quad
- + \operatorname{clip}(x_7x_9,-1,1)
- + \mathbb{1}(x_8>0)\mathbb{1}(x_9>0) .
+  + \operatorname{clip}(x_7x_9,-1,1)
+  + \mathbb{1}(x_8>0)\mathbb{1}(x_9>0) .
 \\
 g_3(x)
 &= \sum_{j=1}^{5} x_j
- + \sum_{j=6}^{8} 0.5\,x_j^2
- + \sum_{j=9}^{10} x_j\,\mathbb{1}(x_j>0)
- + 0.25\,x_1^2x_2^2
- + 2\,(x_3-0.5)_+
+  + \sum_{j=6}^{8} 0.5\,x_j^2
+  + \sum_{j=9}^{10} x_j\,\mathbb{1}(x_j>0)
+  + 0.25\,x_1^2x_2^2
+  + 2\,(x_3-0.5)_+
 \nonumber\\
 &\quad
- + (x_4-0.5)_+
- + 0.5\,\sin(\pi x_5)\sin(\pi x_6)
- + 0.5\,\sin\!\bigl(\pi(x_7+x_8)\bigr) .
+  + (x_4-0.5)_+
+  + 0.5\,\sin(\pi x_5)\sin(\pi x_6)
+  + 0.5\,\sin\!\bigl(\pi(x_7+x_8)\bigr) .
 \\
 g_4(x)
 &= \sum_{j=1}^{5} x_j
- + \sum_{j=6}^{8} 0.5\,x_j^2
- + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
- + x_1x_2 + x_1x_3 + x_2x_3
- + 0.5\,x_1x_2x_3
+  + \sum_{j=6}^{8} 0.5\,x_j^2
+  + \sum_{j=9}^{10} x_j\, \mathbb{1}(x_j>0)
+  + x_1x_2 + x_1x_3 + x_2x_3
+  + 0.5\,x_1x_2x_3
 \nonumber\\
 &\quad
- + x_4x_5 + x_4x_6 + x_5x_6
- + 0.5 \mathbb{1}(x_4>0)+x_5x_6 .
+  + x_4x_5 + x_4x_6 + x_5x_6
+  + 0.5 \mathbb{1}(x_4>0)+x_5x_6 .
 \end{align}
 $$
-<!----------------------------------------------------------------------------------------->
 
+<!----------------------------------------------------------------------------------------->
 ### $g_1$
 #### Interaction Effects ($\rho = 0, n=50K$)
 ##### Gami-Net
